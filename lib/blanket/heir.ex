@@ -32,7 +32,7 @@ defmodule Blanket.Heir do
     # So, we give the table to the heir, and the heir will give it to the
     # GenServer
     true = :ets.give_away(tab, heir_pid, :bootstrap)
-    :ok #@todo should also return the tab ?
+    :ok #@todo should also return the tab ? or heir_pid ?
   end
 
   def receive_table(timeout \\ 5000) do
