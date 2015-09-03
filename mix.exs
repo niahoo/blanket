@@ -7,7 +7,7 @@ defmodule Blanket.Mixfile do
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     description: "Blanket covers your tables ! Don't loose your ETS tables.",
+     description: "Blanket covers your tables ! Don't loose your ETS tables with Elixir.",
      package: [
        contributors: ["Ludovic Demblans"],
        licenses: ["MIT"],
@@ -28,6 +28,7 @@ defmodule Blanket.Mixfile do
 
   defp deps do
     [
+      {:monk, "~> 0.1"},
       {:dogma, git: "https://github.com/lpil/dogma.git", ref: "HEAD", only: :dev},
       {:ex_doc, "~> 0.8.4", only: :dev},
       {:earmark, ">= 0.0.0", only: :dev},

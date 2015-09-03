@@ -1,3 +1,4 @@
 %{"dogma": {:git, "https://github.com/lpil/dogma.git", "42359bdd5ddcafed6223743d45c510d6f8460472", [ref: "HEAD"]},
   "earmark": {:hex, :earmark, "0.1.17"},
-  "ex_doc": {:hex, :ex_doc, "0.8.4"}}
+  "ex_doc": {:hex, :ex_doc, "0.8.4"},
+  "monk": {:hex, :monk, "0.1.3"}}
