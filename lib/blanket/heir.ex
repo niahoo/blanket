@@ -2,17 +2,6 @@ defmodule Blanket.Heir do
   use GenServer
   # require Logger
 
-  defmacro __using__(_) do
-    quote do
-
-      @doc false
-      def get_owner_pid(atom), do: Process.whereis(atom)
-
-      defoverridable [get_owner_pid: 1]
-
-    end
-  end
-
   # x @todo seems we do not need the tab in the GenServer state. We could use it
   # to match on the table if someone (for one reason) decide to set a Heir
   # instance to be the heir of another table.

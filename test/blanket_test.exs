@@ -87,10 +87,10 @@ end
 
 defmodule BlanketTest.Macros do
   use ExUnit.Case
-  use Blanket.Heir
+  use Blanket.TableOwner
   # require Logger
 
-  test "using the Blanket.Heir module defines a default get_owner_pid()" do
+  test "using the Blanket.TableOwner module defines a default get_owner_pid()" do
     # the function is a simple call for Process.whereis
     proc_name = :test_macro_proc_name
     assert nil = get_owner_pid(proc_name)
@@ -118,9 +118,9 @@ end
 
 defmodule BlanketTest.Macros2 do
   use ExUnit.Case
-  use Blanket.Heir
+  use Blanket.TableOwner
 
-  test "Blanket.Heir __using__ imports are overridable" do
+  test "Blanket.TableOwner __using__ imports are overridable" do
     assert {:other, :thing} = get_owner_pid(:thing)
   end
 
