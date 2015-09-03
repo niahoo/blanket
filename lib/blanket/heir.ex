@@ -1,8 +1,17 @@
 defmodule Blanket.Heir do
   use GenServer
-  use Monk
-  require Logger
+  # require Logger
 
+  defmacro __using__(_) do
+    quote do
+
+      @doc false
+      def get_owner_pid(atom), do: Process.whereis(atom)
+
+      defoverridable [get_owner_pid: 1]
+
+    end
+  end
 
   # x @todo seems we do not need the tab in the GenServer state. We could use it
   # to match on the table if someone (for one reason) decide to set a Heir
@@ -20,7 +29,8 @@ defmodule Blanket.Heir do
     tab = :ets.new(tab_name, tab_opts)
     case populate.(tab) do
       :ok -> start_heir(module, owner, tab)
-      otherwise -> err(otherwise)
+      {:error, reason} -> {:error, reason}
+      err -> {:error, err}
     end
   end
 
@@ -38,8 +48,8 @@ defmodule Blanket.Heir do
 
   def receive_table(timeout \\ 5000) do
     receive do
-      {:'ETS-TRANSFER', tab, heir_pid, :blanket_giveaway} ->
-        Logger.debug("Process #{inspect self} received table #{tab} from heir #{inspect heir_pid}")
+      {:'ETS-TRANSFER', tab, _heir_pid, :blanket_giveaway} ->
+        # Logger.debug("Process #{inspect self} received table #{tab} from heir #{inspect _heir_pid}")
         {:ok, tab}
     after
       timeout -> {:error, :ets_transfer_timeout}
@@ -53,7 +63,7 @@ defmodule Blanket.Heir do
   # -- Server side -----------------------------------------------------------
 
   require Record
-  Record.defrecord :heir, tab: nil, module: nil, owner: nil
+  Record.defrecordp :heir, tab: nil, module: nil, owner: nil
 
   def init([module, owner, tab]) do
     state = heir(tab: tab, module: module, owner: owner)
@@ -64,18 +74,17 @@ defmodule Blanket.Heir do
   end
 
 
-  def handle_info({:'ETS-TRANSFER', tab, starter_pid, :bootstrap}, state) do
+  def handle_info({:'ETS-TRANSFER', tab, _starter_pid, :bootstrap}, state) do
     # We are receiving the table after its creation. We will fetch the owner
     # pid and give it the table ownership ; after setting ourselves as the heir
-    Logger.debug "Heir received tab #{tab} on boostrap sequence from #{inspect starter_pid}"
+    # Logger.debug "Heir received tab #{tab} on boostrap sequence from #{inspect _starter_pid}"
     :ets.setopts(tab, {:heir, self, :blanket_heir})
     give_away_table(tab, state)
     {:noreply, state, :hibernate}
   end
 
-  def handle_info({:'ETS-TRANSFER', tab, dead_owner_pid, :blanket_heir}, state) do
-    # @todo remove loggin here
-    Logger.debug "Heir #{inspect self} received the table back from #{inspect dead_owner_pid}"
+  def handle_info({:'ETS-TRANSFER', tab, _dead_owner_pid, :blanket_heir}, state) do
+    # Logger.debug "Heir #{inspect self} received the table back from #{inspect _dead_owner_pid}"
     give_away_table(tab, state)
     {:noreply, state, :hibernate}
   end

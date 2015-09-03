@@ -1,10 +1,10 @@
 defmodule BlanketTest do
   use ExUnit.Case
   alias Blanket.Heir
-  require Logger
+  # require Logger
 
   setup do
-    Logger.debug("SETUP ---------------------------------------------")
+    # Logger.debug("SETUP ---------------------------------------------")
     :ok = :application.ensure_started(:blanket)
     case Process.whereis(TestTableSup) do
       nil -> :ok
@@ -13,7 +13,7 @@ defmodule BlanketTest do
     {:ok, _} = TestTableSup.start_link
     :ok
     :timer.sleep(600)
-    Logger.debug("SETUP OK ------------------------------------------")
+    # Logger.debug("SETUP OK ------------------------------------------")
   end
 
   test "Can bosttrap a heir and manage a table a through Blanket" do
@@ -21,11 +21,11 @@ defmodule BlanketTest do
     owner = :table_owner_name
     Process.register(self, owner)
     assert :ok = Heir.new(__MODULE__, owner, tab_def)
-    assert {:ok, tab} = Heir.receive_table(2000)
+    assert {:ok, _} = Heir.receive_table(2000)
   end
 
   test "A process can be restated and get a table" do
-    Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
+    # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
     tab_def = {:test_tab_2, [:set, :private]}
     owner = :some_gen_server_name
     assert :ok = Heir.new(TestTableServer, owner, tab_def)
@@ -43,7 +43,7 @@ defmodule BlanketTest do
   end
 
   test "It is possible to act on the table at startup" do
-    Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
+    # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
     tab_def = {:test_tab_3, [:set, :private]}
     owner = :a_kv_store
     populate = fn(tab) ->
@@ -85,17 +85,64 @@ defmodule BlanketTest do
 
 end
 
+defmodule BlanketTest.Macros do
+  use ExUnit.Case
+  use Blanket.Heir
+  # require Logger
+
+  test "using the Blanket.Heir module defines a default get_owner_pid()" do
+    # the function is a simple call for Process.whereis
+    proc_name = :test_macro_proc_name
+    assert nil = get_owner_pid(proc_name)
+    aaa = self
+    pid = spawn(fn() ->
+      Process.register(self, proc_name)
+      # Logger.debug "Tiny proc started"
+      send(aaa, :ack)
+      receive do
+        :stop ->
+            # Logger.debug "Stopped !"
+            :ok
+      end
+    end)
+    receive do
+      :ack -> :ok
+    end
+    # Logger.debug "tiny pid is = #{inspect pid}"
+    assert ^pid = get_owner_pid(proc_name)
+    assert Process.whereis(proc_name) === get_owner_pid(proc_name)
+    assert ^pid = get_owner_pid(proc_name)
+    send(pid, :stop)
+  end
+end
+
+defmodule BlanketTest.Macros2 do
+  use ExUnit.Case
+  use Blanket.Heir
+
+  test "Blanket.Heir __using__ imports are overridable" do
+    assert {:other, :thing} = get_owner_pid(:thing)
+  end
+
+
+  def get_owner_pid(x), do: {:other, x}
+end
+
+## -- END OF TESTS
+
+## -- TEST COMPONENTS :
+
 
 defmodule TestTableSup do
   use Supervisor
-  require Logger
+  # require Logger
 
   def start_link do
     Supervisor.start_link(__MODULE__, [])
   end
 
   def init([]) do
-    Logger.info to_string(__MODULE__ ) <> " starting pid = #{inspect self}"
+    # Logger.info to_string(__MODULE__ ) <> " starting pid = #{inspect self}"
     Process.register(self, __MODULE__)
     children = [
       worker(TestTableServer, [])
@@ -106,7 +153,7 @@ end
 
 defmodule TestTableServer do
   use GenServer
-  require Logger
+  # require Logger
 
   def create(name) do
     Supervisor.start_child(TestTableSup, [name])
@@ -131,20 +178,18 @@ defmodule TestTableServer do
 
   def init([name]) do
     Process.register(self, name)
-    Logger.debug "#{__MODULE__} starting, pid = #{inspect self}"
+    # Logger.debug "#{__MODULE__} starting, pid = #{inspect self}"
     {:ok, tab} = Blanket.Heir.receive_table
     {:ok, tab}
   end
 
 
   def handle_call(:increment, _from, tab) do
-    # @todo remove loggin here
     new_value = :ets.update_counter(tab, :counter_key, 1, {:_, 0})
     {:reply, new_value, tab}
   end
 
   def handle_call({:tget, k}, _from, tab) do
-    # @todo remove loggin here
     value = case :ets.lookup(tab, k) do
       [] -> nil
       [{^k, v}] -> v
@@ -153,15 +198,13 @@ defmodule TestTableServer do
   end
 
   def handle_call({:tset, k, v}, _from, tab) do
-    # @todo remove loggin here
     true = :ets.insert(tab, {k, v})
     {:reply, :ok, tab}
   end
 
-  def handle_info(info, tab) do
-    # @todo remove loggin here
-    Logger.debug "#{__MODULE__} received unhandled info #{inspect info}"
-    {:noreply, tab}
-  end
+  # def handle_info(_info, tab) do
+  #   # Logger.debug "#{__MODULE__} received unhandled info #{inspect info}"
+  #   {:noreply, tab}
+  # end
 
 end
