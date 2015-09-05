@@ -8,8 +8,6 @@ sidebarNodes = {
 "docs": ["init/1","start_heir/1","start_link/0"]
 },{"id": "Blanket.TableOwner",
 "docs": ["default_owner_defs/0"]
-},{"id": "MyApp.TableTop",
-"docs": ["start_link/1"]
 
   }]
 
