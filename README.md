@@ -23,8 +23,7 @@ The documentation can be found on [Hex Docs](http://hexdocs.pm/blanket/overview.
 
 ## Example
 
-This is a simple example generic table owner server using `Process.register` to
-registerits name. Just check out the comments.
+This is a simple example generic table owner server using `Process.register` to register its name. Just check out the comments.
 
 Others strategies for identifying processes are available.
 
@@ -65,9 +64,7 @@ end
 
 ## Identifying processes
 
-The previous example uses `Process.register` to register its name. The heir is
-given the owner's module and its name, and can find the owner's pid by calling
-`module.get_owner_pid(name)`. This function is defined in your module by calling `use Blanket` in your module definition.
+The previous example uses `Process.register` to register its name. The heir is given the owner's module and its name, and can find the owner's pid by calling `module.get_owner_pid(name)`. This function is defined in your module by calling `use Blanket` in your module definition.
 
 This is equivalent to the following function :
 
