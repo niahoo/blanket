@@ -30,10 +30,14 @@ defmodule Blanket do
   def new(module, owner, tab_def, populate) do
     {tab_name, tab_opts} = tab_def
     tab = :ets.new(tab_name, tab_opts)
+    wrap_err = fn ({:error, reason}) -> {:error, reason}
+              (err)              -> {:error, err}
+           end
     case populate.(tab) do
       :ok -> start_heir(module, owner, tab)
-      {:error, reason} -> {:error, reason}
-      err -> {:error, err}
+      err ->
+          :ets.delete(tab)
+          wrap_err.(err)
     end
   end
 
@@ -56,7 +60,7 @@ defmodule Blanket do
     # So, we give the table to the heir, and the heir will give it to the
     # GenServer
     true = :ets.give_away(tab, heir_pid, :bootstrap)
-    :ok #@todo should also return the tab ? or heir_pid ?
+    {:ok, heir_pid}
   end
 
 end

@@ -13,7 +13,7 @@ defmodule Blanket.Mixfile do
        licenses: ["MIT"],
        links: %{
          "GitHub" => "https://github.com/niahoo/blanket",
-         "Hex Docs" => "http://hexdocs.pm/blanket/overview.html",
+         "Hex Docs" => "http://hexdocs.pm/blanket",
          "Don't loose your ETS tables" => "http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/",
          "Erlang inspiration" => "https://github.com/DeadZen/etsgive"
        }

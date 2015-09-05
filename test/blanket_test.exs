@@ -19,7 +19,8 @@ defmodule BlanketTest do
     tab_def = {:test_tab_1, [:set, :private]}
     owner = :table_owner_name
     Process.register(self, owner)
-    assert :ok = Blanket.new(__MODULE__, owner, tab_def)
+    assert {:ok, heir_pid} = Blanket.new(__MODULE__, owner, tab_def)
+    assert is_pid(heir_pid)
     assert {:ok, _} = Blanket.receive_table(2000)
   end
 
@@ -27,7 +28,7 @@ defmodule BlanketTest do
     # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
     tab_def = {:test_tab_2, [:set, :private]}
     owner = :some_gen_server_name
-    assert :ok = Blanket.new(TestTableServer, owner, tab_def)
+    assert {:ok, _} = Blanket.new(TestTableServer, owner, tab_def)
     assert {:ok, _} = TestTableServer.create(owner)
     assert 1 = TestTableServer.increment(owner)
     TestTableServer.kill!(owner)
@@ -49,7 +50,7 @@ defmodule BlanketTest do
       :ets.insert(tab, {:hero, {"Sonic", :hedgehog}})
       :ok
     end
-    assert :ok = Blanket.new(TestTableServer, owner, tab_def, populate)
+    assert {:ok, _} = Blanket.new(TestTableServer, owner, tab_def, populate)
     assert {:ok, _} = TestTableServer.create(owner)
     assert {"Sonic", :hedgehog} = TestTableServer.tget(owner, :hero)
 
