@@ -6,45 +6,6 @@ defmodule Blanket.Heir do
   # to match on the table if someone (for one reason) decide to set a Heir
   # instance to be the heir of another table.
 
-  # The table is created in the caller process creation errors are synchronous
-  def new(module, owner, tab_def) do
-    {tab_name, tab_opts} = tab_def
-    tab = :ets.new(tab_name, tab_opts)
-    start_heir(module, owner, tab)
-  end
-
-  def new(module, owner, tab_def, populate) do
-    {tab_name, tab_opts} = tab_def
-    tab = :ets.new(tab_name, tab_opts)
-    case populate.(tab) do
-      :ok -> start_heir(module, owner, tab)
-      {:error, reason} -> {:error, reason}
-      err -> {:error, err}
-    end
-  end
-
-  defp start_heir(module, owner, tab) do
-    heir_conf = [module, owner, tab]
-    {:ok, heir_pid} = Supervisor.start_child(Blanket.Supervisor, heir_conf)
-    # Now this is tricky. The client process is the current owner of the table.
-    # Typically, the process calling Heir.new/3 is not the GenServer that will
-    # own the table. It's the process that starts the gen_server.
-    # So, we give the table to the heir, and the heir will give it to the
-    # GenServer
-    true = :ets.give_away(tab, heir_pid, :bootstrap)
-    :ok #@todo should also return the tab ? or heir_pid ?
-  end
-
-  def receive_table(timeout \\ 5000) do
-    receive do
-      {:'ETS-TRANSFER', tab, _heir_pid, :blanket_giveaway} ->
-        # Logger.debug("Process #{inspect self} received table #{tab} from heir #{inspect _heir_pid}")
-        {:ok, tab}
-    after
-      timeout -> {:error, :ets_transfer_timeout}
-    end
-  end
-
   def start_link(tab_name, tab_opts, get_pid) do
     GenServer.start_link(__MODULE__, [tab_name, tab_opts, get_pid])
   end

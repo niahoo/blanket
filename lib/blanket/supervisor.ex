@@ -5,6 +5,10 @@ defmodule Blanket.Supervisor do
     Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  def start_heir(conf) do
+    Supervisor.start_child(__MODULE__, conf)
+  end
+
   def init([]) do
     children = [
       worker(Blanket.Heir, []),

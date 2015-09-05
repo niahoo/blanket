@@ -1,6 +1,5 @@
 defmodule BlanketTest do
   use ExUnit.Case
-  alias Blanket.Heir
   # require Logger
 
   setup do
@@ -20,15 +19,15 @@ defmodule BlanketTest do
     tab_def = {:test_tab_1, [:set, :private]}
     owner = :table_owner_name
     Process.register(self, owner)
-    assert :ok = Heir.new(__MODULE__, owner, tab_def)
-    assert {:ok, _} = Heir.receive_table(2000)
+    assert :ok = Blanket.new(__MODULE__, owner, tab_def)
+    assert {:ok, _} = Blanket.receive_table(2000)
   end
 
   test "A process can be restated and get a table" do
     # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
     tab_def = {:test_tab_2, [:set, :private]}
     owner = :some_gen_server_name
-    assert :ok = Heir.new(TestTableServer, owner, tab_def)
+    assert :ok = Blanket.new(TestTableServer, owner, tab_def)
     assert {:ok, _} = TestTableServer.create(owner)
     assert 1 = TestTableServer.increment(owner)
     TestTableServer.kill!(owner)
@@ -50,7 +49,7 @@ defmodule BlanketTest do
       :ets.insert(tab, {:hero, {"Sonic", :hedgehog}})
       :ok
     end
-    assert :ok = Heir.new(TestTableServer, owner, tab_def, populate)
+    assert :ok = Blanket.new(TestTableServer, owner, tab_def, populate)
     assert {:ok, _} = TestTableServer.create(owner)
     assert {"Sonic", :hedgehog} = TestTableServer.tget(owner, :hero)
 
@@ -72,13 +71,13 @@ defmodule BlanketTest do
   test "Acting on table must return ok" do
     tab_def = {:test_tab_4, [:set, :private]}
     populate = fn(_) -> :fail end
-    assert {:error, :fail} = Heir.new(__MODULE__, :me, tab_def, populate)
+    assert {:error, :fail} = Blanket.new(__MODULE__, :me, tab_def, populate)
   end
 
   test "Acting on table errors are not rewraped if already like {:error, _}" do
     tab_def = {:test_tab_4, [:set, :private]}
     populate = fn(_) -> {:error, :reason} end
-    assert {:error, :reason} = Heir.new(__MODULE__, :me, tab_def, populate)
+    assert {:error, :reason} = Blanket.new(__MODULE__, :me, tab_def, populate)
   end
 
   def get_owner_pid(atom), do: Process.whereis(atom)
@@ -87,10 +86,10 @@ end
 
 defmodule BlanketTest.Macros do
   use ExUnit.Case
-  use Blanket.TableOwner
+  use Blanket
   # require Logger
 
-  test "using the Blanket.TableOwner module defines a default get_owner_pid()" do
+  test "Blanket.__using__ defines a default get_owner_pid()" do
     # the function is a simple call for Process.whereis
     proc_name = :test_macro_proc_name
     assert nil = get_owner_pid(proc_name)
@@ -118,9 +117,9 @@ end
 
 defmodule BlanketTest.Macros2 do
   use ExUnit.Case
-  use Blanket.TableOwner
+  use Blanket
 
-  test "Blanket.TableOwner __using__ imports are overridable" do
+  test "Blanket.__using__ imports are overridable" do
     assert {:other, :thing} = get_owner_pid(:thing)
   end
 
@@ -179,7 +178,7 @@ defmodule TestTableServer do
   def init([name]) do
     Process.register(self, name)
     # Logger.debug "#{__MODULE__} starting, pid = #{inspect self}"
-    {:ok, tab} = Blanket.Heir.receive_table
+    {:ok, tab} = Blanket.receive_table
     {:ok, tab}
   end
 
