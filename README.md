@@ -1,5 +1,7 @@
 # Blanket covers your ETS tables
 
+[![Build Status](https://travis-ci.org/niahoo/blanket.svg?branch=master)](https://travis-ci.org/niahoo/blanket)
+
 If you use ETS with Elixir and Erlang, you know that an ETS table is bound to a process, and that if this process chrashes, the tables vanishes. All data is lost.
 
 The simplest thing to do is to start a process responsible for owning the table, and do all actual table operations on another process. But this requires coodination between the two process, public named tables with an unique name. Sometimes, you need several private or protected unnamed tables.
