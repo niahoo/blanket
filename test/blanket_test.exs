@@ -62,8 +62,8 @@ defmodule BlanketTest do
     :timer.sleep(300)
 
     assert {"Sonic", :hedgehog} = TestTableServer.tget(owner, :hero)
-    assert nil = TestTableServer.tget(owner, :villain)
-    assert :ok = TestTableServer.tset(owner, :villain, {"Robotnik", :doctor})
+    assert nil === TestTableServer.tget(owner, :villain)
+    assert :ok === TestTableServer.tset(owner, :villain, {"Robotnik", :doctor})
     assert {"Robotnik", :doctor} = TestTableServer.tget(owner, :villain)
 
     TestTableServer.kill!(owner)
@@ -112,7 +112,7 @@ defmodule BlanketTest do
     # the table does not exists after the server has been stopped.
     owner_pid = TestTableServer.get_owner_pid(owner)
     Process.monitor(owner_pid)
-    assert :ok = TestTableServer.stop!(owner)
+    assert :ok === TestTableServer.stop!(owner)
     receive do
       {:'DOWN', _, _, _, :normal} -> :ok
     after
