@@ -137,7 +137,7 @@ defmodule BlanketTest.Macros do
   test "Blanket.__using__ defines a default get_owner_pid()" do
     # the function is a simple call for Process.whereis
     proc_name = :test_macro_proc_name
-    assert nil = get_owner_pid(proc_name)
+    assert nil === get_owner_pid(proc_name)
     aaa = self
     pid = spawn(fn() ->
       Process.register(self, proc_name)
