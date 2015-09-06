@@ -1,7 +1,7 @@
 sidebarNodes = {
   "modules": [
     {"id": "Blanket",
-"docs": ["new/3","new/4","receive_table/1","start/2"]
+"docs": ["abandon_table/2","new/3","new/4","receive_table/1","start/2"]
 },{"id": "Blanket.Heir",
 "docs": ["start_link/3"]
 },{"id": "Blanket.Supervisor",

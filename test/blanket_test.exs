@@ -81,7 +81,47 @@ defmodule BlanketTest do
     assert {:error, :reason} = Blanket.new(__MODULE__, :me, tab_def, populate)
   end
 
+  test "The heir gives up the table if abandon_table is called" do
+    public_name = :test_tab_5
+    tab_def = {public_name, [:set, :public, :named_table]}
+    owner = :gen_server_that_stops
+    check_table_exists = fn(tab) ->
+      try do
+        true = :ets.insert(tab, {:tab_control, "some value"})
+      rescue
+        _e in ArgumentError -> false
+      end
+    end
+    # the table exists after blanket has been started
+    assert {:ok, heir} = Blanket.new(__MODULE__, owner, tab_def)
+    assert check_table_exists.(public_name)
+    # the table exists after the server has been started
+    TestTableServer.create(owner, heir)
+    assert check_table_exists.(public_name)
+    # the table exists after the server has been killed
+    TestTableServer.kill!(owner)
+    assert check_table_exists.(public_name)
+    :timer.sleep(300)
+    assert check_table_exists.(public_name)
+    # The heir is alive
+    assert Process.alive?(heir)
+    # the table does not exists after the server has been stopped.
+    owner_pid = TestTableServer.get_owner_pid(owner)
+    Process.monitor(owner_pid)
+    assert :ok = TestTableServer.stop!(owner)
+    receive do
+      {:'DOWN', _, _, _, :normal} -> :ok
+    after
+      1000 -> assert false
+    end
+    assert not check_table_exists.(public_name)
+    # ... and the owner and the heir are gone
+    assert not Process.alive?(heir)
+    assert not Process.alive?(owner_pid)
+  end
+
   def get_owner_pid(atom), do: Process.whereis(atom)
+
 
 end
 
@@ -145,7 +185,7 @@ defmodule TestTableSup do
     # Logger.info to_string(__MODULE__ ) <> " starting pid = #{inspect self}"
     Process.register(self, __MODULE__)
     children = [
-      worker(TestTableServer, [])
+      worker(TestTableServer, [], restart: :transient)
     ]
     supervise(children, strategy: :simple_one_for_one)
   end
@@ -153,17 +193,20 @@ end
 
 defmodule TestTableServer do
   use GenServer
-  # require Logger
+  require Logger
+  require Record
+  Record.defrecord :state, tab: nil, heir: nil
 
-  def create(name) do
-    Supervisor.start_child(TestTableSup, [name])
+  def create(name, heir \\ nil) do
+    Supervisor.start_child(TestTableSup, [name, heir])
   end
 
-  def start_link(name) do
-    GenServer.start_link(__MODULE__, [name])
+  def start_link(name, heir) do
+    GenServer.start_link(__MODULE__, [name, heir])
   end
 
   def kill!(name), do: Process.exit(get_owner_pid(name), :kill)
+  def stop!(name), do: GenServer.call(name, :stop)
 
   def increment(name), do: GenServer.call(name, :increment)
 
@@ -176,35 +219,39 @@ defmodule TestTableServer do
 
   # the state is just the table ID
 
-  def init([name]) do
+  def init(_args=[name, heir]) do
     Process.register(self, name)
-    # Logger.debug "#{__MODULE__} starting, pid = #{inspect self}"
+    # Logger.debug "#{__MODULE__} starting, args = #{inspect _args}"
     {:ok, tab} = Blanket.receive_table
-    {:ok, tab}
+    {:ok, state(tab: tab, heir: heir)}
   end
 
-
-  def handle_call(:increment, _from, tab) do
+  def handle_call(:increment, _from, s=state(tab: tab)) do
     new_value = :ets.update_counter(tab, :counter_key, 1, {:_, 0})
-    {:reply, new_value, tab}
+    {:reply, new_value, s}
   end
 
-  def handle_call({:tget, k}, _from, tab) do
+  def handle_call({:tget, k}, _from, s=state(tab: tab)) do
     value = case :ets.lookup(tab, k) do
       [] -> nil
       [{^k, v}] -> v
     end
-    {:reply, value, tab}
+    {:reply, value, s}
   end
 
-  def handle_call({:tset, k, v}, _from, tab) do
+  def handle_call({:tset, k, v}, _from, s=state(tab: tab)) do
     true = :ets.insert(tab, {k, v})
-    {:reply, :ok, tab}
+    {:reply, :ok, s}
+  end
+
+  def handle_call(:stop, _from, s=state(tab: tab, heir: heir)) do
+    :ok = Blanket.abandon_table(tab, heir)
+    {:stop, :normal, :ok, s}
   end
 
   # def handle_info(_info, tab) do
   #   # Logger.debug "#{__MODULE__} received unhandled info #{inspect info}"
-  #   {:noreply, tab}
+  #   {:noreply, s}
   # end
 
 end

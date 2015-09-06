@@ -44,11 +44,16 @@ defmodule Blanket do
   def receive_table(timeout \\ 5000) do
     receive do
       {:'ETS-TRANSFER', tab, _heir_pid, :blanket_giveaway} ->
-        # Logger.debug("Process #{inspect self} received table #{tab} from heir #{inspect _heir_pid}")
         {:ok, tab}
     after
       timeout -> {:error, :ets_transfer_timeout}
     end
+  end
+
+  def abandon_table(tab, heir) do
+    # The owner must be the process which set options
+    true = :ets.setopts(tab, [{:heir, :none}])
+    GenServer.call(heir, :stop)
   end
 
   defp start_heir(module, owner, tab) do

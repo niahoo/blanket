@@ -1,12 +1,14 @@
 # Blanket covers your ETS tables
 
-If you use ETS with Elixir and Erlang, you know that the table is bound to a process, and if this process chrashes, the tables vanishes. All data is lost.
+If you use ETS with Elixir and Erlang, you know that an ETS table is bound to a process, and that if this process chrashes, the tables vanishes. All data is lost.
 
-The simplest thing to do is to start a process responsible for owning the table, and do all actual table operation on another process. But this requires coodination between the two process, public named tables with an unique name. Sometimes, you need several private or protected unnamed tables.
+The simplest thing to do is to start a process responsible for owning the table, and do all actual table operations on another process. But this requires coodination between the two process, public named tables with an unique name. Sometimes, you need several private or protected unnamed tables.
 
-Read a thorough explanation of theese problems and a simple solution to them on Steve Vinoski's Blog here : [Don't Lose Your ets Tables](http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/).
+More informations on theese problems and a simple solution to them can be found on Steve Vinoski's Blog here : [Don't Lose Your ets Tables](http://steve.vinoski.net/blog/2011/03/23/dont-lose-your-ets-tables/).
 
-You can also look an erlang implementation of the solution [on github](https://github.com/DeadZen/etsgive).
+You can also look et an Erlang implementation of the solution [on github](https://github.com/DeadZen/etsgive).
+
+But all you *need* to from there is to use this package !
 
 ## Installation
 
@@ -100,4 +102,4 @@ The function *must* return `:ok`. Any other value will be returned as an error t
 
 ## Todo
 
- - abandon_table
+ - document abandon_table feature

@@ -23,19 +23,28 @@ defmodule Blanket.Heir do
     # where the give_away to the real owner will happen
   end
 
+  def handle_call(:stop, _from, state) do
+    {:stop, :normal, :ok, state}
+  end
+
+  def handle_call(_msg, _from, state) do
+    {:noreply, state, :hibernate}
+  end
 
   def handle_info({:'ETS-TRANSFER', tab, _starter_pid, :bootstrap}, state) do
     # We are receiving the table after its creation. We will fetch the owner
     # pid and give it the table ownership ; after setting ourselves as the heir
-    # Logger.debug "Heir received tab #{tab} on boostrap sequence from #{inspect _starter_pid}"
     :ets.setopts(tab, {:heir, self, :blanket_heir})
     give_away_table(tab, state)
     {:noreply, state, :hibernate}
   end
 
   def handle_info({:'ETS-TRANSFER', tab, _dead_owner_pid, :blanket_heir}, state) do
-    # Logger.debug "Heir #{inspect self} received the table back from #{inspect _dead_owner_pid}"
     give_away_table(tab, state)
+    {:noreply, state, :hibernate}
+  end
+
+  def handle_info(_info, state) do
     {:noreply, state, :hibernate}
   end
 
