@@ -28,7 +28,11 @@ defmodule BlanketTest do
     # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
     tab_def = {:test_tab_2, [:set, :private]}
     owner = :some_gen_server_name
-    assert {:ok, _} = Blanket.new(TestTableServer, owner, tab_def)
+    init_counter = fn(tab) ->
+      true = :ets.insert(tab, {:counter_key, 0})
+      :ok
+    end
+    assert {:ok, _} = Blanket.new(TestTableServer, owner, tab_def, init_counter)
     assert {:ok, _} = TestTableServer.create(owner)
     assert 1 = TestTableServer.increment(owner)
     TestTableServer.kill!(owner)
@@ -227,7 +231,7 @@ defmodule TestTableServer do
   end
 
   def handle_call(:increment, _from, s=state(tab: tab)) do
-    new_value = :ets.update_counter(tab, :counter_key, 1, {:_, 0})
+    new_value = :ets.update_counter(tab, :counter_key, 1)
     {:reply, new_value, s}
   end
 
