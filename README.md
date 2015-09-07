@@ -23,7 +23,7 @@ Just define	the `:blanket` dependency in your project's `mix.exs`.
 
 ## Documentation
 
-The documentation can be found on [Hex Docs](http://hexdocs.pm/blanket/overview.html).
+The documentation can be found on [Hex Docs](http://hexdocs.pm/blanket).
 
 ## Example
 
@@ -47,7 +47,7 @@ defmodule MyApp.TableTop do
     GenServer.start_link(__MODULE__, [name])
   end
 
-  # ...
+  # …
 
   def init([name]) do
     # 1. The table owner registers its name to be found by the table heir. Any
@@ -96,12 +96,42 @@ You can now register your process with gproc :
 
 Remember to always register your process before calling Blanket.`receive_table`.
 
-## Table initialisation
+## Options
 
-`Blanket.new` accepts an anonymous function as its fourth argument. If present, this function will be passed the ETS table as its sole argument. The function is evaluated as the table owner so you can act on private tables.
+`Blanket.new` accepts a keyword-list as its fourth argument. At the moment, two keys are accepted :
 
-The function *must* return `:ok`. Any other value will be returned as an error tuple after the table have been deleted.
+ - `:transient` — If `true`, the heir will give up on the table when the table owner process exits with `:normal`. Return `{:stop, :normal, state}` from your generic server callbacks and the table will vanish.
+ - `:populate` — Must contain an anonymous function. This function will be passed the ETS table as its sole argument and will becalled as the table owner so you can act on private tables. It *must* return `:ok`. Any other value will be returned as an error tuple after the table have been deleted.
 
-## Todo
+```elixir
+  opts = [transient: true, populate: fn(tab) -> :ok = do_things(tab) end]
+  Blanket.new(module, owner, tab_def, opts)
+```
 
- - document abandon_table feature
+## Transient tables
+
+If you need to shutdown your table owner, you should tell the heir not to wait for a restart by calling `Blanket.abandon_table(tab, heir)`.
+
+You must do this in the table owner process :
+
+```elixir
+defmodule MyApp.TemporaryTable do
+  use GenServer
+  use Blanket
+
+  # …
+
+  def terminate(:normal, {tab, heir}) do
+    :ok = Blanket.abandon_table(tab, heir)
+  end
+
+  def terminate(error, state) do
+    # …
+  end
+
+  # …
+
+end
+```
+
+This technique has a drawback, you must store the pid of the heir in your generic server state (or somewhere else) in order to turn it off. You can also use the `:transient` option in the heir configuration to achieve this.

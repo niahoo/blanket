@@ -20,24 +20,29 @@ defmodule Blanket do
   # Heir API ------------------------------------------------------------------
 
 
-  # The table is created in the caller process creation errors are synchronous
+  # The table is created in the calling process, as is called the populate fn,
+  # so creation errors are synchronous in the calling process
   def new(module, owner, tab_def) do
     {tab_name, tab_opts} = tab_def
     tab = :ets.new(tab_name, tab_opts)
-    start_heir(module, owner, tab)
+    start_heir(module, owner, tab, [])
   end
 
-  def new(module, owner, tab_def, populate) do
+  def new(module, owner, tab_def, populate) when is_function(populate, 1) do
+    new(module, owner, tab_def, [populate: populate])
+  end
+
+  def new(module, owner, tab_def, opts) when is_list(opts) do
     {tab_name, tab_opts} = tab_def
     tab = :ets.new(tab_name, tab_opts)
-    wrap_err = fn ({:error, reason}) -> {:error, reason}
-              (err)              -> {:error, err}
-           end
+    opts = proplist_to_keyword(opts)
+    populate = Keyword.get(opts, :populate, fn(_) -> :ok end)
+    opts = Keyword.delete(opts, :populate)
     case populate.(tab) do
-      :ok -> start_heir(module, owner, tab)
+      :ok -> start_heir(module, owner, tab, opts)
       err ->
           :ets.delete(tab)
-          wrap_err.(err)
+          wrap_error(err)
     end
   end
 
@@ -56,16 +61,19 @@ defmodule Blanket do
     GenServer.call(heir, :stop)
   end
 
-  defp start_heir(module, owner, tab) do
-    heir_conf = [module, owner, tab]
-    {:ok, heir_pid} = Blanket.Supervisor.start_heir(heir_conf)
-    # Now this is tricky. The client process is the current owner of the table.
-    # Typically, the process calling Heir.new/3 is not the GenServer that will
-    # own the table. It's the process that starts the gen_server.
-    # So, we give the table to the heir, and the heir will give it to the
-    # GenServer
-    true = :ets.give_away(tab, heir_pid, :bootstrap)
-    {:ok, heir_pid}
+  defp start_heir(module, owner, tab, opts) do
+    Blanket.Heir.new(module, owner, tab, opts)
+  end
+
+  defp wrap_error({:error, reason}), do: {:error, reason}
+  defp wrap_error(err), do: {:error, err}
+
+  defp proplist_to_keyword(opts) do
+    opts |> Enum.map(
+      fn({k, v}) -> {k, v}
+        (k) -> {k, true}
+      end
+    )
   end
 
 end

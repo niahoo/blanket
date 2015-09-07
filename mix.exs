@@ -3,7 +3,7 @@ defmodule Blanket.Mixfile do
 
   def project do
     [app: :blanket,
-     version: "0.2.2",
+     version: "0.3.0",
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,

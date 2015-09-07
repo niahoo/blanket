@@ -11,7 +11,7 @@ defmodule Blanket.Supervisor do
 
   def init([]) do
     children = [
-      worker(Blanket.Heir, []),
+      worker(Blanket.Heir, [], restart: :transient)
     ]
 
     supervise(children, strategy: :simple_one_for_one)

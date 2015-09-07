@@ -89,37 +89,49 @@ defmodule BlanketTest do
     public_name = :test_tab_5
     tab_def = {public_name, [:set, :public, :named_table]}
     owner = :gen_server_that_stops
-    check_table_exists = fn(tab) ->
-      try do
-        true = :ets.insert(tab, {:tab_control, "some value"})
-      rescue
-        _e in ArgumentError -> false
-      end
-    end
     # the table exists after blanket has been started
     assert {:ok, heir} = Blanket.new(__MODULE__, owner, tab_def)
-    assert check_table_exists.(public_name)
-    # the table exists after the server has been started
+    assert check_table_exists(public_name)
+    # give the server the heir pid
     TestTableServer.create(owner, heir)
-    assert check_table_exists.(public_name)
-    # the table exists after the server has been killed
+    test_table_kill_then_table_stop(public_name, owner, heir)
+  end
+
+  test "The heir gives up the table on server down if transient: true" do
+    public_name = :test_tab_6
+    tab_def = {public_name, [:set, :public, :named_table]}
+    owner = :gen_server_that_stops_sliently
+    assert {:ok, heir} = Blanket.new(__MODULE__, owner, tab_def, [:transient])
+    assert check_table_exists(public_name)
+    # the server is not given the heir, and abandon = false
+    TestTableServer.create(owner, nil, false)
+    test_table_kill_then_table_stop(public_name, owner, heir)
+  end
+
+  defp test_table_kill_then_table_stop(public_name, owner, heir) do
+    assert check_table_exists(public_name)
+    # we kill the owner, the heir should stay live
     TestTableServer.kill!(owner)
-    assert check_table_exists.(public_name)
+    assert check_table_exists(public_name)
     :timer.sleep(300)
-    assert check_table_exists.(public_name)
-    # The heir is alive
+    assert check_table_exists(public_name)
     assert Process.alive?(heir)
-    # the table does not exists after the server has been stopped.
     owner_pid = TestTableServer.get_owner_pid(owner)
-    Process.monitor(owner_pid)
+    owner_mref = Process.monitor(owner_pid)
+    heir_mref = Process.monitor(heir)
     assert :ok === TestTableServer.stop!(owner)
+    # waiting for both the processes are stopped
     receive do
-      {:'DOWN', _, _, _, :normal} -> :ok
+      {:'DOWN', ^owner_mref, :process, ^owner_pid, _} -> :ok
     after
       1000 -> assert false
     end
-    assert not check_table_exists.(public_name)
-    # ... and the owner and the heir are gone
+    receive do
+      {:'DOWN', ^heir_mref, :process, ^heir, _} -> :ok
+    after
+      1000 -> assert false
+    end
+    assert not check_table_exists(public_name)
     assert not Process.alive?(heir)
     assert not Process.alive?(owner_pid)
   end
@@ -127,6 +139,34 @@ defmodule BlanketTest do
   def get_owner_pid(atom), do: Process.whereis(atom)
 
 
+  test "It is possible to pass :transient and options" do
+    public_name = :test_tab_7
+    tab_def = {public_name, [:set, :public, :named_table]}
+    owner = :gen_server_that_stops_sliently
+    this = self
+    populate = fn(_) ->
+      send(this, :populated)
+      :ok
+    end
+    assert {:ok, heir} = Blanket.new(__MODULE__, owner, tab_def, [transient: true, populate: populate])
+    receive do
+      :populated -> :ok
+    after
+      1000 -> assert false
+    end
+    # the server is not given the heir, and abandon = false
+    TestTableServer.create(owner, nil, false)
+    test_table_kill_then_table_stop(public_name, owner, heir)
+  end
+
+  # table must be public/named
+  defp check_table_exists(tab) do
+    try do
+      true = :ets.insert(tab, {:tab_control, "some value"})
+    rescue
+      _e in ArgumentError -> false
+    end
+  end
 end
 
 defmodule BlanketTest.Macros do
@@ -199,14 +239,13 @@ defmodule TestTableServer do
   use GenServer
   require Logger
   require Record
-  Record.defrecord :state, tab: nil, heir: nil
 
-  def create(name, heir \\ nil) do
-    Supervisor.start_child(TestTableSup, [name, heir])
+  def create(name, heir \\ nil, abandon_on_stop? \\ true) do
+    Supervisor.start_child(TestTableSup, [name, heir, abandon_on_stop?])
   end
 
-  def start_link(name, heir) do
-    GenServer.start_link(__MODULE__, [name, heir])
+  def start_link(name, heir, abandon_on_stop?) do
+    GenServer.start_link(__MODULE__, [name, heir, abandon_on_stop?])
   end
 
   def kill!(name), do: Process.exit(get_owner_pid(name), :kill)
@@ -221,13 +260,13 @@ defmodule TestTableServer do
 
   # --------------
 
-  # the state is just the table ID
+  Record.defrecord :state, tab: nil, heir: nil, abandon: true
 
-  def init(_args=[name, heir]) do
+  def init(_args=[name, heir, abandon_on_stop?]) do
     Process.register(self, name)
     # Logger.debug "#{__MODULE__} starting, args = #{inspect _args}"
     {:ok, tab} = Blanket.receive_table
-    {:ok, state(tab: tab, heir: heir)}
+    {:ok, state(tab: tab, heir: heir, abandon: abandon_on_stop?)}
   end
 
   def handle_call(:increment, _from, s=state(tab: tab)) do
@@ -248,8 +287,7 @@ defmodule TestTableServer do
     {:reply, :ok, s}
   end
 
-  def handle_call(:stop, _from, s=state(tab: tab, heir: heir)) do
-    :ok = Blanket.abandon_table(tab, heir)
+  def handle_call(:stop, _from, s) do
     {:stop, :normal, :ok, s}
   end
 
@@ -257,5 +295,15 @@ defmodule TestTableServer do
   #   # Logger.debug "#{__MODULE__} received unhandled info #{inspect info}"
   #   {:noreply, s}
   # end
+
+  def terminate(:normal, state(tab: tab, heir: heir, abandon: ab)) do
+    if ab do
+      :ok = Blanket.abandon_table(tab, heir)
+  end
+  end
+
+  def terminate(_, _) do
+    # Logger.debug "#{__MODULE__} terminating because=#{inspect error}"
+  end
 
 end
