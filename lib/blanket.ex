@@ -28,10 +28,6 @@ defmodule Blanket do
     start_heir(module, owner, tab, [])
   end
 
-  def new(module, owner, tab_def, populate) when is_function(populate, 1) do
-    new(module, owner, tab_def, [populate: populate])
-  end
-
   def new(module, owner, tab_def, opts) when is_list(opts) do
     {tab_name, tab_opts} = tab_def
     tab = :ets.new(tab_name, tab_opts)
@@ -44,6 +40,10 @@ defmodule Blanket do
           :ets.delete(tab)
           wrap_error(err)
     end
+  end
+
+  def new(module, owner, tab_def, populate) when is_function(populate, 1) do
+    new(module, owner, tab_def, [populate: populate])
   end
 
   def receive_table(timeout \\ 5000) do
