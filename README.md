@@ -18,7 +18,7 @@ Just define	the `:blanket` dependency in your project's `mix.exs` and require th
 
 ```elixir
   defp deps do
-    [{:blanket, "~> 0.3.0"}]
+    [{:blanket, "~> 0.3.1"}]
   end
 
   def application do

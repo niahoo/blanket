@@ -1,11 +1,11 @@
 sidebarNodes = {
   "modules": [
     {"id": "Blanket",
-"docs": ["abandon_table/2","new/3","new/4","receive_table/1","start/2"]
+"docs": ["abandon_table/2","new/4","receive_table/1"]
 },{"id": "Blanket.Heir",
-"docs": ["new/4","start_link/4"]
+"docs": ["new/4"]
 },{"id": "Blanket.Supervisor",
-"docs": ["init/1","start_heir/1","start_link/0"]
+"docs": ["start_link/0"]
 },{"id": "Blanket.TableOwner",
 "docs": ["default_owner_defs/0"]
 

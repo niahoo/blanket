@@ -1,4 +1,9 @@
 defmodule Blanket.Heir do
+  @moduledoc """
+  This modules describes the generic server for the heirs. Use the `Blanket`
+  module to create and interact with the heirs.
+  """
+
   use GenServer
   require Record
 
@@ -9,16 +14,24 @@ defmodule Blanket.Heir do
     transient: nil,
     mref: nil # monitor reference
 
-
   @default_opts [
     transient: false
   ]
 
+  @doc """
+  Starts a new heir process. The calling process must own the table, use
+  `Blanket.new` to create a table and attach a heir.
+  """
+  @spec new(module, owner, tab, opts) :: {:ok, pid}
+    when  module: atom,
+          owner: Blanket.owner,
+          tab: :ets.tid,
+          opts: Blanket.opts
 
   def new(module, owner, tab, opts) do
     opts = Keyword.merge(@default_opts, opts)
-    heir_conf = [module, owner, tab, opts]
-    {:ok, heir_pid} = Blanket.Supervisor.start_heir(heir_conf)
+    conf = [module, owner, tab, opts]
+    {:ok, heir_pid} = Supervisor.start_child(Blanket.Supervisor, conf)
     # Now this is tricky. The client process is the current owner of the table.
     # Typically, the process calling Heir.new/3 is not the GenServer that will
     # own the table. It's the process that starts the gen_server.
@@ -28,8 +41,9 @@ defmodule Blanket.Heir do
     {:ok, heir_pid}
   end
 
-  # we build the state out of the GenServer process. That's not a problem.
+  @doc false
   def start_link(module, owner, tab, opts) do
+    # we build the state out of the GenServer process. That's not a problem.
     state = st(
       tab: tab,
       module: module,

@@ -1,14 +1,15 @@
 defmodule Blanket.Supervisor do
+  @moduledoc """
+  The supervisor for the `:blanket` application.
+  """
   use Supervisor
 
+  @doc "Starts the supervisor"
   def start_link do
     Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def start_heir(conf) do
-    Supervisor.start_child(__MODULE__, conf)
-  end
-
+  @doc false
   def init([]) do
     children = [
       worker(Blanket.Heir, [], restart: :transient)

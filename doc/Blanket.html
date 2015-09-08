@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     
-        <title>Blanket – blanket v0.3.0</title>
+        <title>Blanket – blanket v0.3.1</title>
       
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc">
@@ -24,7 +24,7 @@
 
   <h1 id="full_list_header">
     
-      blanket v0.3.0
+      blanket v0.3.1
     
   </h1>
 
@@ -74,7 +74,7 @@
         <button type="button" class="btn btn-default btn-sm" data-toggle="offcanvas">
           <span class="glyphicon glyphicon-menu-hamburger"></span>
         </button>
-        blanket v0.3.0 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a>
+        blanket v0.3.1 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a>
       </div>
 
       <h1>
@@ -87,6 +87,8 @@
           <li><a href="#summary_details">Summary</a></li>
         
         
+          <li><a href="#types_details">Types</a></li>
+        
         
           <li><a href="#functions_details">Functions</a></li>
         
@@ -96,7 +98,8 @@
 
       
         <section id="moduledoc" class="docstring">
-          <p>This is the top module of the Blanket application.</p>
+          <p>This is the facade of the Blanket application. Handles starting/stopping the
+application and defines the client API.</p>
 
         </section>
       
@@ -109,23 +112,19 @@
           <table class="summary">
             <tr>
   <td class="summary_signature"><a href="#abandon_table/2">abandon_table(tab, heir)</a></td>
-  <td class="summary_synopsis"></td>
+  <td class="summary_synopsis"><p>Removes the <code class="inline">:heir</code> option from the table, stops the heir process</p>
+</td>
 </tr>
 <tr>
-  <td class="summary_signature"><a href="#new/3">new(module, owner, tab_def)</a></td>
-  <td class="summary_synopsis"></td>
-</tr>
-<tr>
-  <td class="summary_signature"><a href="#new/4">new(module, owner, tab_def, opts)</a></td>
-  <td class="summary_synopsis"></td>
+  <td class="summary_signature"><a href="#new/4">new(module, owner, tab_def, opts \\ [])</a></td>
+  <td class="summary_synopsis"><p>Creates a new ETS table and a new heir attached to it</p>
+</td>
 </tr>
 <tr>
   <td class="summary_signature"><a href="#receive_table/1">receive_table(timeout \\ 5000)</a></td>
-  <td class="summary_synopsis"></td>
-</tr>
-<tr>
-  <td class="summary_signature"><a href="#start/2">start(type, args)</a></td>
-  <td class="summary_synopsis"><p>Callback implementation for <code class="inline">c::application.start/2</code></p>
+  <td class="summary_synopsis"><p>Awaits for an <code class="inline">:&#39;ETS-TRANSFER&#39;</code> message from the heir. The heir must find the
+calling process by calling <code class="inline">module.get_owner_pid(name)</code> with the <code class="inline">module</code> and
+<code class="inline">owner</code> values provided in <a href="Blanket.html#new/4"><code class="inline">Blanket.new/4</code></a></p>
 </td>
 </tr>
 
@@ -133,6 +132,31 @@
         </section>
       
 
+      
+        <section id="types_details" class="details_list">
+          <h1>Types</h1>
+          <div class="type_detail">
+  <p class="typespec" id="t:opts/0">
+    <a href="#t:opts/0">opts</a> :: [{atom, function | boolean} | atom]
+  </p>
+  
+      <div class="typespec_doc"><p>Blanket heir options are a proplist.</p>
+</div>
+  
+</div>
+<div class="type_detail">
+  <p class="typespec" id="t:owner/0">
+    <a href="#t:owner/0">owner</a> :: atom | any
+  </p>
+  
+      <div class="typespec_doc"><p>An owner is a value used to retrieve a process. Typically it’s an atom
+manipulated with <code class="inline">Process.register</code> and <code class="inline">Process.whereis</code>. But it can be any
+value used with a custom pid-store.</p>
+</div>
+  
+</div>
+
+        </section>
       
 
       
@@ -148,29 +172,22 @@
     </div>
   </div>
   
-  <section class="docstring">
-    
-  </section>
-  
-</section>
-<section class="detail">
-  <div class="detail_header" id="new/3">
-    <span class="signature"><strong>new(module, owner, tab_def)</strong></span>
-    <div class="detail_header_links">
-      <span class="detail_type">(function)</span>
-      <a href="#new/3" class="detail_link" title="Link to this function">#</a>
-      <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
-    </div>
-  </div>
+    <p>Specs:</p>
+    <ul class="spec">
+      
+        <li>abandon_table(:ets.tid, pid) :: :ok</li>
+      
+    </ul>
   
   <section class="docstring">
-    
+    <p>Removes the <code class="inline">:heir</code> option from the table, stops the heir process.</p>
+
   </section>
   
 </section>
 <section class="detail">
   <div class="detail_header" id="new/4">
-    <span class="signature"><strong>new(module, owner, tab_def, opts)</strong></span>
+    <span class="signature"><strong>new(module, owner, tab_def, opts \\ [])</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
       <a href="#new/4" class="detail_link" title="Link to this function">#</a>
@@ -178,8 +195,27 @@
     </div>
   </div>
   
+    <p>Specs:</p>
+    <ul class="spec">
+      
+        <li>new(atom, <a href="#t:owner/0">owner</a>, {atom, <a href="http://elixir-lang.org/docs/stable/elixir/Keyword.html#t:t/0">Keyword.t</a>}, <a href="#t:opts/0">opts</a>) :: {:ok, pid} | {:error, any}</li>
+      
+    </ul>
+  
   <section class="docstring">
-    
+    <p>Creates a new ETS table and a new heir attached to it.</p>
+<p><code class="inline">opts</code> is either a function for populating the ets table (or any other
+operation), or a list containing zero or more options from :</p>
+<ul>
+<li><code class="inline">:transient</code> (<code class="inline">true</code> | <code class="inline">false</code>) : wether the heir will stop if the table
+   process exits with <code class="inline">:normal</code>.
+</li>
+<li><code class="inline">:populate</code> : the same function as above.
+</li>
+</ul>
+<p>The table is created in the current process, as is called the populate
+function.</p>
+
   </section>
   
 </section>
@@ -193,23 +229,17 @@
     </div>
   </div>
   
-  <section class="docstring">
-    
-  </section>
-  
-</section>
-<section class="detail">
-  <div class="detail_header" id="start/2">
-    <span class="signature"><strong>start(type, args)</strong></span>
-    <div class="detail_header_links">
-      <span class="detail_type">(function)</span>
-      <a href="#start/2" class="detail_link" title="Link to this function">#</a>
-      <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
-    </div>
-  </div>
+    <p>Specs:</p>
+    <ul class="spec">
+      
+        <li>receive_table(timeout) :: {:ok, :ets.tid} | {:error, :transfer_timeout}</li>
+      
+    </ul>
   
   <section class="docstring">
-    <p>Callback implementation for <code class="inline">c::application.start/2</code>.</p>
+    <p>Awaits for an <code class="inline">:&#39;ETS-TRANSFER&#39;</code> message from the heir. The heir must find the
+calling process by calling <code class="inline">module.get_owner_pid(name)</code> with the <code class="inline">module</code> and
+<code class="inline">owner</code> values provided in <a href="Blanket.html#new/4"><code class="inline">Blanket.new/4</code></a>.</p>
 
   </section>
   
