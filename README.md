@@ -14,10 +14,16 @@ But all you *need* to from there is to use this package !
 
 ## Installation
 
-Just define	the `:blanket` dependency in your project's `mix.exs`.
+Just define	the `:blanket` dependency in your project's `mix.exs` and require the application to be started.
+
 ```elixir
   defp deps do
     [{:blanket, "~> 0.3.0"}]
+  end
+
+  def application do
+    [mod: {MyApp, []},
+     applications: [:blanket]]
   end
 ```
 
