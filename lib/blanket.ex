@@ -8,7 +8,7 @@ defmodule Blanket do
   use Application
 
   def start(_type, _args) do
-    _x = Blanket.Supervisor.start_link
+    Blanket.Supervisor.start_link
   end
 
   # Table Owner API -----------------------------------------------------------
@@ -22,18 +22,16 @@ defmodule Blanket do
 
   # The table is created in the calling process, as is called the populate fn,
   # so creation errors are synchronous in the calling process
-  def new(module, owner, tab_def) do
-    {tab_name, tab_opts} = tab_def
-    tab = :ets.new(tab_name, tab_opts)
-    start_heir(module, owner, tab, [])
-  end
+
+  def new(module, owner, tab_def, opts \\ [])
 
   def new(module, owner, tab_def, opts) when is_list(opts) do
     {tab_name, tab_opts} = tab_def
     tab = :ets.new(tab_name, tab_opts)
-    opts = proplist_to_keyword(opts)
-    populate = Keyword.get(opts, :populate, fn(_) -> :ok end)
-    opts = Keyword.delete(opts, :populate)
+    {populate, opts} =
+      opts
+      |> proplist_to_keywords
+      |> Keyword.pop(:populate, fn(_) -> :ok end)
     case populate.(tab) do
       :ok -> start_heir(module, owner, tab, opts)
       err ->
@@ -68,7 +66,7 @@ defmodule Blanket do
   defp wrap_error({:error, reason}), do: {:error, reason}
   defp wrap_error(err), do: {:error, err}
 
-  defp proplist_to_keyword(opts) do
+  defp proplist_to_keywords(opts) do
     opts |> Enum.map(
       fn({k, v}) -> {k, v}
         (k) -> {k, true}
