@@ -42,14 +42,20 @@ defmodule MyApp.TableTop do
   use GenServer
   use Blanket
 
-  def start_link(name) do
+  def create(name) do
     # 1. Define a table as you would do with ETS. Here is the equivalent of
     # :ets.new(:users, [:set, :protected])
     table_def = {:users, [:set, :protected]}
     # 2. Create a new Blanket process to be the table heir, passing a name for
     # the table owner process. The table is created.
     {:ok, _} = Blanket.new(__MODULE__, name, table_def)
-    # 3. Start your table owner process.
+    # 3. Start your table owner process wit a child-spec or args if you are
+    # using :simple_one_for_one
+    child_spec = Supervisor.Spec.worker(__MODULE__,[name])
+    Supervisor.start_child(MyApp.Supervisor, child_spec)
+  end
+
+  def start_link(name) do
     GenServer.start_link(__MODULE__, [name])
   end
 
@@ -71,6 +77,8 @@ defmodule MyApp.TableTop do
 end
 
 ```
+
+Do not create the heir in your `start_link` function, because in this case, the supervisor would re-create a table and a heir when restarting the generic server by calling `start_link`
 
 ## Identifying processes
 
