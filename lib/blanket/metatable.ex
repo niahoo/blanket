@@ -1,8 +1,5 @@
 
 defmodule Blanket.Metatable do
-  @moduledoc """
-  The supervisor for the `:blanket` application.
-  """
   use GenServer
 
   @metatable __MODULE__
@@ -12,19 +9,17 @@ defmodule Blanket.Metatable do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  # returns a tab id by tref
-  def lookup_by_tref(tref) do
-    case :ets.lookup(@metatable, tref) do
-      [] -> nil
-      [{^tref, tab}] -> tab
+  def register_table(tab, tref) do
+    case :ets.insert_new(@metatable, {tab, tref}) do
+      true -> :ok
+      false -> {:error, {:already_registered, tab, tref}}
     end
   end
 
-
-  def register_by_tref(tref, tab) do
-    case :ets.insert_new(@metatable, {tref, tab}) do
-      true -> :ok
-      false -> {:error, {:already_registered, tref, tab}}
+  def get_tab_tref(tab) do
+    case :ets.lookup(@metatable, tab) do
+      [] -> {:error, {:table_not_found, tab}}
+      [{^tab, tref}] -> {:ok, tref}
     end
   end
 

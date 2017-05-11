@@ -5,18 +5,6 @@ defmodule Blanket do
   """
   alias Blanket.Heir
 
-  @typedoc """
-  Blanket heir options are a proplist.
-  """
-  @type opts :: [{atom, function | boolean} | atom]
-
-  @typedoc """
-  An owner is a value used to retrieve a process. Typically it's an atom
-  manipulated with `Process.register` and `Process.whereis`. But it can be any
-  value used with a custom pid-store.
-  """
-  @type owner :: atom | any
-
   # -- Application API --------------------------------------------------------
 
   use Application
@@ -28,13 +16,40 @@ defmodule Blanket do
 
   # User API ------------------------------------------------------------------
 
-  def claim_table(tref, opts \\ [])
+  def claim_table(tref, table_opts \\ [], heir_opts \\ [])
 
-  def claim_table(tref, opts) do
+  def claim_table(tref, table_opts, heir_opts) do
     # boots a table heir, or get the pid of an existing one, and attempt to set
     # the owner. Returns error if the table is already owned.
-    {:ok, heir_pid} = Heir.pid_of(tref, opts)
-    Heir.claim(heir_pid, self())
+    {:ok, heir_pid} = Heir.pid_or_create(tref, table_opts)
+    # Maybe we want to set a monitor if we expect the heir to crash. This should
+    # never happen because the heir does nothing, but we offer this safety
+    monitor = Keyword.get(heir_opts, :monitor, false)
+    return_monitor_ref = Keyword.get(heir_opts, :monitor_ref, false)
+    case Heir.claim(heir_pid, self()) do
+      {:ok, tab} ->
+        mref =
+          if monitor do
+            Process.monitor(heir_pid)
+          end
+        if monitor and return_monitor_ref do
+          {:ok, tab, mref}
+        else
+          {:ok, tab}
+        end
+      other -> other
+    end
+  end
+
+  # Creates a new heir for the table. The calling process must be the table
+  # owner. We set a monitor (because to be there, you must have asked for a
+  # monitor beforehand) and return the new process monitor ref
+  def recover_heir(tab) do
+    with {:ok, tref} <- Blanket.Metatable.get_tab_tref(tab),
+         {:ok, heir_pid} <- Blanket.Heir.boot(:recover, tref, :no_opts),
+         :ok <- Heir.attach(heir_pid, tab) do
+         {:ok, Process.monitor(heir_pid)}
+    end
   end
 
 end

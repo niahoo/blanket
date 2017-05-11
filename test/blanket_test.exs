@@ -15,13 +15,13 @@ defmodule BlanketTest do
     # Logger.debug("SETUP OK ------------------------------------------")
   end
 
-  test "Can bootstrap a heir and manage a table a through Blanket" do
-    # We will ask blanket for a table. The table will be created
-    assert {:ok, tab} = Blanket.claim_table(:some_ref, create: __MODULE__)
-    # You can't claim the table multiple times (even with the owner process)
-    assert {:error, :already_owned} = Blanket.claim_table(:some_ref, create: __MODULE__)
-    Process.sleep(1000)
-  end
+  # test "Can bootstrap a heir and manage a table a through Blanket" do
+  #   # We will ask blanket for a table. The table will be created
+  #   assert {:ok, tab} = Blanket.claim_table(:some_ref, create: __MODULE__)
+  #   # You can't claim the table multiple times (even with the owner process)
+  #   assert {:error, :already_owned} = Blanket.claim_table(:some_ref, create: __MODULE__)
+  #   Process.sleep(1000)
+  # end
 
   def create_table(opts, heir) do
     {:ok, :ets.new(:test_table_name, [heir])}
@@ -41,40 +41,41 @@ defmodule BlanketTest do
     ])
   end
 
-  # test "A process can be restated and get a table, a heir can also die" do
-  #   # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
-  #   # Btw, test if we can create with a fun
-  #   assert {:ok, owner} = create_owner(:my_test_table)
+  test "A process can be restated and get a table, a heir can also die" do
+    # Logger.debug "test process #{__MODULE__} pid = #{inspect self}"
+    # Btw, test if we can create with a fun
+    assert {:ok, owner} = create_owner(:my_test_table)
 
-  #   assert 1 = TestTableServer.increment(owner)
-  #   TestTableServer.kill!(owner)
-  #   :timer.sleep(300)
+    assert 1 = TestTableServer.increment(owner)
+    TestTableServer.kill!(owner)
+    :timer.sleep(300)
 
-  #   tab = Blanket.Metatable.lookup_by_tref(:my_test_table)
-  #   IO.puts "table id from metatable: #{inspect tab}"
+    # owner was killed, the new owner should have been restarted by its
+    # supervisor, and the table should have been saved, so the increment
+    # continues
+    owner = Process.whereis(SomeGlobalPidName)
+    assert 2 = TestTableServer.increment(owner)
 
-  #   owner = Process.whereis(SomeGlobalPidName)
-  #   assert 2 = TestTableServer.increment(owner)
+    IO.puts "KILLING HEIR"
+    [{heir_pid, _}] = Registry.lookup(Blanket.Registry, :my_test_table)
+    IO.puts " ---- heir pid : #{inspect heir_pid}"
+    Process.exit(heir_pid, :kill)
 
-  #   # IO.puts "KILLING HEIR"
-  #   # Process.sleep(1000)
-  #   # [{heir_pid, _}] = Registry.lookup(Blanket.Registry, :my_test_table)
-  #   # IO.puts " ---- heir pid : #{inspect heir_pid}"
-  #   # Process.exit(heir_pid, :kill)
+    # Let the owner get the DOWN message
+    :timer.sleep(300)
 
-  #   # The new increment will do because the owner did not die, so this works :
-  #   assert 3 = TestTableServer.increment(owner)
-  #   TestTableServer.kill!(owner)
-  #   :timer.sleep(300)
+    # The new increment will do because the owner did not die, so this works :
+    assert 3 = TestTableServer.increment(owner)
+    TestTableServer.kill!(owner)
+    :timer.sleep(300)
 
-  #   # the heir then the owner died, but the table was not lost
-  #   owner = Process.whereis(SomeGlobalPidName)
-  #   assert 4 = TestTableServer.increment(owner)
-  #   TestTableServer.kill!(owner)
-  #   :timer.sleep(300)
-  # end
+    # the heir then the owner died, but the table was not lost
+    owner = Process.whereis(SomeGlobalPidName)
+    assert 4 = TestTableServer.increment(owner)
+  end
 
   test "An owner can abandon the table" do
+    IO.puts "@todo abandon table"
   end
 
   # test "It is possible to act on the table at startup" do
@@ -229,6 +230,10 @@ defmodule TestTableServer do
   require Logger
   require Record
 
+  defmodule State do
+    defstruct [tab: nil, tref: nil]
+  end
+
   def create(tref, opts) do
     Supervisor.start_child(TestTableSup, [tref, opts])
   end
@@ -248,42 +253,48 @@ defmodule TestTableServer do
   # --------------
 
   def init(_args=[tref, opts]) do
-    claim = Blanket.claim_table(tref, opts)
+    claim = Blanket.claim_table(tref, opts, monitor: true, monitor_ref: true)
     Process.register(self(), Keyword.fetch!(opts, :register))
     IO.puts "TestTableServer claiming table : #{inspect claim}"
-    {:ok, tab} = claim
-    {:ok, tab}
+    {:ok, tab, _monitor_ref} = claim
+    {:ok, %State{tab: tab}}
   end
 
-  def handle_call(:increment, _from, tab) do
+  def handle_call(:increment, _from, %State{tab: tab}) do
     new_value = :ets.update_counter(tab, :counter_key, 1)
-    {:reply, new_value, tab}
+    {:reply, new_value, %State{tab: tab}}
   end
 
-  def handle_call({:tget, k}, _from, tab) do
+  def handle_call({:tget, k}, _from, %State{tab: tab}) do
     value = case :ets.lookup(tab, k) do
       [] -> nil
       [{^k, v}] -> v
     end
-    {:reply, value, tab}
+    {:reply, value, %State{tab: tab}}
   end
 
-  def handle_call({:tset, k, v}, _from, tab) do
+  def handle_call({:tset, k, v}, _from, %State{tab: tab}) do
     true = :ets.insert(tab, {k, v})
-    {:reply, :ok, tab}
+    {:reply, :ok, %State{tab: tab}}
   end
 
-  def handle_call(:stop, _from, tab) do
-    {:stop, :normal, :ok, tab}
+  def handle_call(:stop, _from, %State{tab: tab}) do
+    {:stop, :normal, :ok, %State{tab: tab}}
   end
 
-  def handle_info(_info, tab) do
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, %State{tab: tab, tref: tref}) do
+    IO.puts "The heir died"
+    {:ok, _monitor_ref} = Blanket.recover_heir(tab)
+    {:noreply, %State{tab: tab}}
+  end
+
+  def handle_info(_info, %State{tab: tab}) do
     IO.puts "~~~~~~ #{__MODULE__} received unhandled info #{inspect _info}"
-    {:noreply, tab}
+    {:noreply, %State{tab: tab}}
   end
 
-  def terminate(:normal, tab) do
-    :ok = Blanket.abandon_table(tab)
+  def terminate(:normal, %State{tab: tab}) do
+    :ok = Blanket.abandon_table(%State{tab: tab})
   end
 
   def terminate(_, _) do

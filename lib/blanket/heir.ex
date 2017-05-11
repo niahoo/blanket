@@ -14,20 +14,24 @@ defmodule Blanket.Heir do
     {:via, Registry, {Blanket.Registry, tref}}
   end
 
-  def pid_of(tref, opts) do
-    case __MODULE__.boot(tref, opts) do
-      {:ok, pid} -> {:ok, pid}
-      {:error, {:already_started, pid}} -> {:ok, pid}
+  def pid_or_create(tref, opts) do
+    case __MODULE__.boot(:create, tref, opts) do
+      {:ok, pid} ->
+        IO.puts "(xx) heir was created"
+        {:ok, pid}
+      {:error, {:already_started, pid}} ->
+        IO.puts "(xx) heir exists"
+        {:ok, pid}
     end
   end
 
-  def boot(tref, opts) do
-    Supervisor.start_child(Blanket.Heir.Supervisor, [tref, opts])
+  def boot(create_or_recover, tref, opts) do
+    Supervisor.start_child(Blanket.Heir.Supervisor, [create_or_recover, tref, opts])
   end
 
   @doc false
-  def start_link(tref, opts) do
-    GenServer.start_link(__MODULE__, [tref, opts], name: via(tref))
+  def start_link(create_or_recover, tref, opts) do
+    GenServer.start_link(__MODULE__, [create_or_recover, tref, opts], name: via(tref))
   end
 
   def claim(pid, owner_pid) when is_pid(pid) do
@@ -42,15 +46,23 @@ defmodule Blanket.Heir do
         end
         {:ok, tab}
     end
-
   end
 
+  def attach(pid, tab) do
+    # the calling process must be the table owner
+    true = :ets.setopts(tab, [heir_opt(pid)])
+    GenServer.call(pid, {:attach, tab, self()})
+  end
+
+  def heir_opt(pid) when is_pid(pid) do
+    {:heir, pid, :blanket_heir}
+  end
 
   # -- Server side -----------------------------------------------------------
 
-  def init([tref, opts]) do
+  def init([:create, tref, opts]) do
     IO.puts "heir initializing for #{inspect tref}"
-    case find_or_create_table(tref, opts) do
+    case create_table(tref, opts) do
       {:ok, tab} ->
         IO.puts "table #{inspect tref} found or created"
         {:ok, %State{tab: tab}}
@@ -58,6 +70,11 @@ defmodule Blanket.Heir do
         IO.puts "table #{inspect tref} : could not create or find it : #{inspect other}"
         other
     end
+  end
+
+  def init([:recover, tref, :no_opts]) do
+    IO.puts "heir recovering for #{inspect tref}"
+    {:ok, %State{}}
   end
 
   def handle_call(:stop, _from, state) do
@@ -77,16 +94,10 @@ defmodule Blanket.Heir do
     {:reply, {:ok, tab}, %State{state | mref: mref, owner_pid: owner_pid}}
   end
 
-  # def handle_call(_msg, _from, state) do
-  #   {:noreply, state, :hibernate}
-  # end
-
-  # def handle_info({:'ETS-TRANSFER', tab, _, :INIT}, state=st(tab: tab)) do
-  #   # We are receiving the table after its creation. We will fetch the owner
-  #   # pid and give it the table ownership ; after setting ourselves as the heir
-  #   ETS.setopts(tab, {:heir, self, :blanket_heir})
-  #   handle_transfer(state)
-  # end
+  def handle_call({:attach, tab, owner_pid}, _from, state = %State{owner_pid: nil, tab: nil}) do
+    mref = Process.monitor(owner_pid)
+    {:reply, :ok, %State{state | mref: mref, owner_pid: owner_pid, tab: tab}}
+  end
 
   def handle_info({:DOWN, mref, :process, owner_pid, _reason},
       state = %State{owner_pid: owner_pid, tab: tab, mref: mref}) do
@@ -110,11 +121,6 @@ defmodule Blanket.Heir do
     end
   end
 
-  # def handle_info({:'ETS-TRANSFER', tab, _, :blanket_heir},
-  #     state=st(tab: tab)) do
-  #   handle_transfer(state)
-  # end
-
   def handle_info(_info, state) do
     IO.puts "heir (#{inspect self()}) got info : #{inspect _info}"
     {:noreply, state, :hibernate}
@@ -123,52 +129,10 @@ defmodule Blanket.Heir do
   defp reset_owner(state),
     do: %State{state | owner_pid: nil, mref: nil}
 
-  # defp handle_transfer(state=st(tab: tab)) do
-  #   owner_pid = get_owner_pid(state)
-  #   state = st(state, mref: Process.monitor(owner_pid))
-  #   ETS.give_away(tab, owner_pid, :blanket_giveaway)
-  #   {:noreply, state, :hibernate}
-  # end
-
-  # # this will wait forever, so the client must be sure that the owner process
-  # # will be restarted (or call Heir.abandon_table)
-  # defp get_owner_pid(st(module: module, owner: owner)=state) do
-  #   case module.get_owner_pid(owner) do
-  #     pid when is_pid(pid) ->
-  #       pid
-  #     _otherwise ->
-  #       :timer.sleep(1)
-  #       get_owner_pid(state)
-  #   end
-  # end
-
-  defp find_or_create_table(tref, opts) do
-    case find_table(tref) do
-      {:ok, tab} ->
-        IO.puts "table #{inspect tref} exists"
-        {:ok, tab}
-      :not_found ->
-        IO.puts "table #{inspect tref} must be created"
-        with {:ok, tab} <- create_table(tref, opts),
-             :ok <- register_table(tref, tab),
-           do: {:ok, tab}
-    end
-  end
-
-  defp find_table(tref) do
-    case Blanket.Metatable.lookup_by_tref(:my_test_table) do
-      nil -> :not_found
-      tab -> {:ok, tab}
-    end
-  end
-
-  defp register_table(tref, tab) do
-    Blanket.Metatable.register_by_tref(tref, tab)
-  end
 
   defp create_table(tref, opts) do
     # We are creating a new heir, we must also create the table
-    heir = {:heir, self(), :blanket_heir}
+    heir = heir_opt(self())
     create_table =
       case Keyword.get(opts, :create) do
         # If the user supplied a module, give back the opts, plus the heir opt
@@ -188,6 +152,7 @@ defmodule Blanket.Heir do
     with {:ok, tab} <- create_table.(),
          populate <- Keyword.get(opts, :populate, fn(_tab) -> :ok end),
          :ok <- populate.(tab),
+         :ok <- Blanket.Metatable.register_table(tab, tref),
        do: {:ok, tab}
   end
 
