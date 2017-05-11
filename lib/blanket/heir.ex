@@ -117,7 +117,7 @@ defmodule Blanket.Heir do
       {:DOWN, ^mref, :process, ^owner_pid, _reason} ->
         {:noreply, reset_owner(state)}
     after
-      5000 -> raise "Transfer not received"
+      5000 -> raise "Down message not received"
     end
   end
 
