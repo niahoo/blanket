@@ -1,4 +1,4 @@
-defmodule Blanket.Supervisor do
+defmodule Blanket.Heir.Supervisor do
   @moduledoc """
   The supervisor for the `:blanket` application.
   """
@@ -12,10 +12,9 @@ defmodule Blanket.Supervisor do
   @doc false
   def init([]) do
     children = [
-      supervisor(Blanket.Heir.Supervisor, []),
-      supervisor(Registry, [:unique, Blanket.Registry]),
-      worker(Blanket.Metatable, []),
+      worker(Blanket.Heir, [], restart: :transient),
     ]
-    supervise(children, strategy: :one_for_one)
+
+    supervise(children, strategy: :simple_one_for_one)
   end
 end

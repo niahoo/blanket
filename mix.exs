@@ -18,7 +18,7 @@ defmodule Blanket.Mixfile do
          "Erlang inspiration" => "https://github.com/DeadZen/etsgive"
        }
      ],
-     deps: deps]
+     deps: deps()]
   end
 
   def application do
