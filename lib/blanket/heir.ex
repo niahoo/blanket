@@ -17,10 +17,8 @@ defmodule Blanket.Heir do
   def pid_or_create(tref, opts) do
     case __MODULE__.boot(:create, tref, opts) do
       {:ok, pid} ->
-        IO.puts "(xx) heir was created"
         {:ok, pid}
       {:error, {:already_started, pid}} ->
-        IO.puts "(xx) heir exists"
         {:ok, pid}
     end
   end
@@ -49,9 +47,14 @@ defmodule Blanket.Heir do
   end
 
   def attach(pid, tab) do
-    # the calling process must be the table owner
-    true = :ets.setopts(tab, [heir_opt(pid)])
+    set_heir(pid, tab)
     GenServer.call(pid, {:attach, tab, self()})
+  end
+
+  # the calling process must be the table owner
+  defp set_heir(pid, tab) do
+    true = :ets.setopts(tab, [heir_opt(pid)])
+    :ok
   end
 
   def heir_opt(pid) when is_pid(pid) do
@@ -61,25 +64,22 @@ defmodule Blanket.Heir do
   # -- Server side -----------------------------------------------------------
 
   def init([:create, tref, opts]) do
-    IO.puts "heir initializing for #{inspect tref}"
     case create_table(tref, opts) do
       {:ok, tab} ->
-        IO.puts "table #{inspect tref} found or created"
         {:ok, %State{tab: tab}}
       other ->
-        IO.puts "table #{inspect tref} : could not create or find it : #{inspect other}"
         other
     end
   end
 
   def init([:recover, tref, :no_opts]) do
-    IO.puts "heir recovering for #{inspect tref}"
     {:ok, %State{}}
   end
 
   def handle_call(:stop, _from, state) do
     {:stop, :normal, :ok, state}
   end
+
 
   def handle_call({:claim, new_owner_pid}, _from,
     state = %State{owner_pid: owner_pid})
@@ -89,9 +89,13 @@ defmodule Blanket.Heir do
 
   def handle_call({:claim, owner_pid}, _from, state = %State{owner_pid: nil, tab: tab})
     when is_pid(owner_pid) do
-    mref = Process.monitor(owner_pid)
-    ETS.give_away(tab, owner_pid, :blanket_giveaway)
-    {:reply, {:ok, tab}, %State{state | mref: mref, owner_pid: owner_pid}}
+    if ETS.info(tab, :owner) === self() do
+      mref = Process.monitor(owner_pid)
+      ETS.give_away(tab, owner_pid, :blanket_giveaway)
+      {:reply, {:ok, tab}, %State{state | mref: mref, owner_pid: owner_pid}}
+    else
+      {:reply, {:error, :cannot_giveaway}, state}
+    end
   end
 
   def handle_call({:attach, tab, owner_pid}, _from, state = %State{owner_pid: nil, tab: nil}) do
@@ -122,7 +126,6 @@ defmodule Blanket.Heir do
   end
 
   def handle_info(_info, state) do
-    IO.puts "heir (#{inspect self()}) got info : #{inspect _info}"
     {:noreply, state, :hibernate}
   end
 
@@ -134,26 +137,23 @@ defmodule Blanket.Heir do
     # We are creating a new heir, we must also create the table
     heir = heir_opt(self())
     create_table =
-      case Keyword.get(opts, :create) do
+      case Keyword.get(opts, :create_table) do
         # If the user supplied a module, give back the opts, plus the heir opt
         module when is_atom(module) ->
-          fn() -> apply(module, :create_table, [opts, heir]) end
+          fn() -> apply(module, :create_table, [opts]) end
         # If the user supplied options, create a table with those options and
         # the heir option.
-        table_opts when is_list(table_opts) ->
-          {table_name, table_opts} = Keyword.pop(opts, :name, :nameless_table)
-          fn() -> {:ok, ETS.new(table_name, [heir|table_opts])} end
-        fun when is_function(fun, 2) ->
-          fn() -> fun.(opts, heir) end
+        {table_name, table_opts} when is_atom(table_name) and is_list(table_opts) ->
+          fn() -> {:ok, ETS.new(table_name, table_opts)} end
+        fun when is_function(fun, 0) ->
+          fun
         _other ->
           raise "Creation method invalid"
       end
-    IO.puts "Heir creating table ref=#{inspect tref}"
     with {:ok, tab} <- create_table.(),
-         populate <- Keyword.get(opts, :populate, fn(_tab) -> :ok end),
-         :ok <- populate.(tab),
-         :ok <- Blanket.Metatable.register_table(tab, tref),
-       do: {:ok, tab}
+          :ok <- set_heir(self(), tab),
+          :ok <- Blanket.Metatable.register_table(tab, tref),
+      do: {:ok, tab}
   end
 
 end

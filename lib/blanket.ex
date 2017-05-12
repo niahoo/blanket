@@ -16,22 +16,20 @@ defmodule Blanket do
 
   # User API ------------------------------------------------------------------
 
-  def claim_table(tref, table_opts \\ [], heir_opts \\ [])
-
-  def claim_table(tref, table_opts, heir_opts) do
+  def claim_table(tref, opts) do
     # boots a table heir, or get the pid of an existing one, and attempt to set
     # the owner. Returns error if the table is already owned.
-    {:ok, heir_pid} = Heir.pid_or_create(tref, table_opts)
+    # The table is created in the heir process so we can then use the same code
+    # asking foir the table when the heir is owner
+    {:ok, heir_pid} = Heir.pid_or_create(tref, opts)
     # Maybe we want to set a monitor if we expect the heir to crash. This should
     # never happen because the heir does nothing, but we offer this safety
-    monitor = Keyword.get(heir_opts, :monitor, false)
-    return_monitor_ref = Keyword.get(heir_opts, :monitor_ref, false)
+    monitor = Keyword.get(opts, :monitor, false)
+    return_monitor_ref = Keyword.get(opts, :monitor_ref, false)
     case Heir.claim(heir_pid, self()) do
       {:ok, tab} ->
-        mref =
-          if monitor do
-            Process.monitor(heir_pid)
-          end
+        mref = if monitor,
+          do: Process.monitor(heir_pid)
         if monitor and return_monitor_ref do
           {:ok, tab, mref}
         else
