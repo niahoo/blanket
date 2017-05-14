@@ -14,6 +14,13 @@ defmodule Blanket.Heir do
     {:via, Registry, {Blanket.Registry, tref}}
   end
 
+  def whereis(tref) do
+    case Registry.lookup(Blanket.Registry, tref) do
+      [{pid, _}] -> {:ok, pid}
+      other -> {:error, {:heir_not_found, other}}
+    end
+  end
+
   def pid_or_create(tref, opts) do
     case __MODULE__.boot(:create, tref, opts) do
       {:ok, pid} ->
@@ -28,6 +35,8 @@ defmodule Blanket.Heir do
   end
 
   @doc false
+  # The :via option is just used so we cannot create two processes with the same
+  # tref. But we use the pid to send messages to the gen_server.
   def start_link(create_or_recover, tref, opts) do
     GenServer.start_link(__MODULE__, [create_or_recover, tref, opts], name: via(tref))
   end
@@ -47,13 +56,24 @@ defmodule Blanket.Heir do
   end
 
   def attach(pid, tab) do
-    set_heir(pid, tab)
+    :ok = set_heir(pid, tab)
     GenServer.call(pid, {:attach, tab, self()})
+  end
+
+  # the calling process must own the table.
+  def detach(pid, tab) do
+    :ok = remove_heir(tab)
+    GenServer.call(pid, {:stop, :detach})
   end
 
   # the calling process must be the table owner
   defp set_heir(pid, tab) do
     true = :ets.setopts(tab, [heir_opt(pid)])
+    :ok
+  end
+
+  defp remove_heir(tab) do
+    true = :ets.setopts(tab, [{:heir, :none}])
     :ok
   end
 
@@ -101,6 +121,10 @@ defmodule Blanket.Heir do
   def handle_call({:attach, tab, owner_pid}, _from, state = %State{owner_pid: nil, tab: nil}) do
     mref = Process.monitor(owner_pid)
     {:reply, :ok, %State{state | mref: mref, owner_pid: owner_pid, tab: tab}}
+  end
+
+  def handle_call({:stop, :detach}, _from, state) do
+    {:stop, :normal, :ok, state}
   end
 
   def handle_info({:DOWN, mref, :process, owner_pid, _reason},

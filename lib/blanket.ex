@@ -4,6 +4,7 @@ defmodule Blanket do
   application and defines the client API.
   """
   alias Blanket.Heir
+  alias Blanket.Metatable
 
   # -- Application API --------------------------------------------------------
 
@@ -41,12 +42,24 @@ defmodule Blanket do
 
   # Creates a new heir for the table. The calling process must be the table
   # owner. We set a monitor (because to be there, you must have asked for a
-  # monitor beforehand) and return the new process monitor ref
+  # monitor beforehand) and return the new process monitor ref.
+  # /!\ This function should not be called if the heir is not dead because the
+  # current heir will not be turned down while booting a new one.
   def recover_heir(tab) do
-    with {:ok, tref} <- Blanket.Metatable.get_tab_tref(tab),
-         {:ok, heir_pid} <- Blanket.Heir.boot(:recover, tref, :no_opts),
+    with {:ok, tref} <- Metatable.get_tab_tref(tab),
+         {:ok, heir_pid} <- Heir.boot(:recover, tref, :no_opts),
          :ok <- Heir.attach(heir_pid, tab) do
          {:ok, Process.monitor(heir_pid)}
+    end
+  end
+
+  # Find the heir associated with the table, and stops it. The calling process
+  # must own the table.
+  def abandon_table(tab) do
+    with {:ok, tref} <- Metatable.get_tab_tref(tab),
+         {:ok, heir_pid} <- Heir.whereis(tref),
+         :ok <- Heir.detach(heir_pid, tab) do
+         :ok
     end
   end
 

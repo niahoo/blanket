@@ -20,18 +20,19 @@ defmodule BlanketTest do
     assert {:ok, tab} = Blanket.claim_table(:some_ref, create_table: __MODULE__)
     # You can't claim the table multiple times (even with the owner process)
     assert {:error, :already_owned} = Blanket.claim_table(:some_ref, create_table: __MODULE__)
-    Process.sleep(1000)
+    Process.sleep(300)
+    assert :ok = Blanket.abandon_table(tab)
   end
 
   def create_table(opts) do
     {:ok, :ets.new(:test_table_name, [])}
   end
 
-  def create_owner(table_ref) do
+  def create_owner(table_ref, table_name \\ :test_table, ets_opts \\ []) do
     TestTableServer.create(table_ref, [
       register: SomeGlobalPidName,
       create_table: fn() ->
-        tab = :ets.new(:public_test_table, [])
+        tab = :ets.new(table_name, ets_opts)
         true = :ets.insert(tab, {:counter_key, 0})
         {:ok, tab}
       end,
@@ -75,7 +76,23 @@ defmodule BlanketTest do
   end
 
   test "An owner can abandon the table" do
-    IO.puts "@todo abandon table"
+    tref = make_ref()
+    # create a public table
+    assert {:ok, owner} = create_owner(tref, :public_test_table, [:named_table, :public])
+    # it should have a heir
+    assert [{heir, _}] = Registry.lookup(Blanket.Registry, tref)
+    assert Process.alive?(heir) # dummy test, it should fail later
+    assert 1 = TestTableServer.increment(owner)
+    assert 2 = TestTableServer.increment(owner)
+    # the table is public so we can update it ; this test is quite not usefur
+    assert 3 = :ets.update_counter(:public_test_table, :counter_key, 1)
+    # still on the same table
+    assert 4 = TestTableServer.increment(owner)
+    # now stop the process. The gen_server should terminate the heir in
+    # terminate/2
+    assert :ok = TestTableServer.stop!(owner)
+    Process.sleep(300)
+    refute Process.alive?(heir) # dummy test, it should fail later
   end
 end
 
@@ -174,7 +191,7 @@ defmodule TestTableServer do
   end
 
   def terminate(:normal, %State{tab: tab}) do
-    :ok = Blanket.abandon_table(%State{tab: tab})
+    :ok = Blanket.abandon_table(tab)
   end
 
   def terminate(_, _) do
