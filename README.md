@@ -37,11 +37,15 @@ The documentation can be found on [Hex Docs](https://hexdocs.pm/blanket/Blanket.
 defmodule MyApp.TableOwner do
   use GenServer
 
+  # 1. Create your process with the table reference being part of the child
+  # spec, so your process can be restarted with the same reference. Table
+  # reference is not a table identifier returned by :ets.new but a term to
+  # identify the table in blanket. It must be unique but can be any term. Best
+  # is to use make_ref() for dynamic tables, and an atom like __MODULE__ for
+  # known tables.
+
   def create(table_ref) do
-    # 1. Create your process with the table reference being part of the child
-    # spec, so your process can be restarted with the same reference.
-    # Table reference is not a table identifier returned by :ets.new but
-    child_spec = Supervisor.Spec.worker(__MODULE__,[table_ref])
+    child_spec = Supervisor.Spec.worker(__MODULE__, [table_ref])
     Supervisor.start_child(MyApp.Supervisor, child_spec)
   end
 
@@ -52,6 +56,7 @@ defmodule MyApp.TableOwner do
   # 2. Create the table on the server side. If your process crashes, the table
   # will be protected by a heir, and if you claim the table again with the same
   # reference, the existing table will be returned.
+
   def init([table_ref]) do
     {:ok, tab} = Blanket.claim_table(tref, create_table: fn() ->
       tab = :ets.new(:my_tab)
@@ -62,6 +67,7 @@ defmodule MyApp.TableOwner do
 
   # 3. If you want to use temporary tables, just tell Blanket to forget about
   # the table before terminating your process.
+
   def terminate(:normal, %State{tab: tab}) do
     :ok = Blanket.abandon_table(tab)
   end
