@@ -3,11 +3,11 @@ defmodule Blanket.Mixfile do
 
   def project do
     [app: :blanket,
-     version: "0.3.1",
+     version: "1.0.0",
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     description: "Blanket covers your tables ! Don't loose your ETS tables with Elixir.",
+     description: "Don't loose your ETS tables with Elixir.",
      package: [
        contributors: ["Ludovic Demblans"],
        licenses: ["MIT"],

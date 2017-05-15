@@ -1,4 +1,4 @@
-# Blanket covers your ETS tables
+# Keep your ETS tables saf and warm with Blanket
 
 [![Build Status](https://travis-ci.org/niahoo/blanket.svg?branch=master)](https://travis-ci.org/niahoo/blanket)
 
