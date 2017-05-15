@@ -1,7 +1,7 @@
 defmodule Blanket.Heir do
   @moduledoc """
-  This modules describes the generic server for the heirs. Use the `Blanket`
-  module to create and interact with the heirs.
+  This modules describes the generic server for the table heirs. Use the
+  `Blanket` module to create and interact with a heir.
   """
   alias :ets, as: ETS
 

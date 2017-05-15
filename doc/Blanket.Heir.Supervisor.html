@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     
-        <title>Blanket.TableOwner – blanket v0.3.1</title>
+        <title>Blanket.Heir.Supervisor – blanket v1.0.0</title>
       
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc">
@@ -13,7 +13,7 @@
   </head>
   <body>
 
-    
+    Elixir.ExDoc.Formatter.HTML
     <div class="row row-offcanvas row-offcanvas-left">
 <section id="sidebar" class="col-xs-6 col-sm-3 sidebar-offcanvas">
   <p class="pull-right visible-xs">
@@ -24,7 +24,7 @@
 
   <h1 id="full_list_header">
     
-      blanket v0.3.1
+      blanket v1.0.0
     
   </h1>
 
@@ -74,11 +74,11 @@
         <button type="button" class="btn btn-default btn-sm" data-toggle="offcanvas">
           <span class="glyphicon glyphicon-menu-hamburger"></span>
         </button>
-        blanket v0.3.1 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a> &rarr; <a href="Blanket.TableOwner.html#content">TableOwner</a>
+        blanket v1.0.0 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a> &rarr; <a href="Blanket.Heir.html#content">Heir</a> &rarr; <a href="Blanket.Heir.Supervisor.html#content">Supervisor</a>
       </div>
 
       <h1>
-        Blanket.TableOwner
+        Blanket.Heir.Supervisor
         
       </h1>
 
@@ -96,7 +96,10 @@
 
       
         <section id="moduledoc" class="docstring">
-          <p>This module provides the quoted forms for the modules calling <code class="inline">use Blanket</code>.</p>
+          <p>The supervisor for the <code class="inline">:blanket</code> application.</p>
+<p>It’s a simple_one_for_one/temporary : the children are never restared. Table
+owner processes must claim a new heir when they receive the ‘DOWN’ message for
+their heir. (If they ask so).</p>
 
         </section>
       
@@ -108,8 +111,8 @@
           <h1>Summary</h1>
           <table class="summary">
             <tr>
-  <td class="summary_signature"><a href="#default_owner_defs/0">default_owner_defs()</a></td>
-  <td class="summary_synopsis"><p>Provides the default functions for a table owner</p>
+  <td class="summary_signature"><a href="#start_link/0">start_link()</a></td>
+  <td class="summary_synopsis"><p>Starts the supervisor</p>
 </td>
 </tr>
 
@@ -123,17 +126,17 @@
         <section id="functions_details" class="details_list">
           <h1>Functions</h1>
           <section class="detail">
-  <div class="detail_header" id="default_owner_defs/0">
-    <span class="signature"><strong>default_owner_defs()</strong></span>
+  <div class="detail_header" id="start_link/0">
+    <span class="signature"><strong>start_link()</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#default_owner_defs/0" class="detail_link" title="Link to this function">#</a>
+      <a href="#start_link/0" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
   
   <section class="docstring">
-    <p>Provides the default functions for a table owner.</p>
+    <p>Starts the supervisor</p>
 
   </section>
   

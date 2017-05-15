@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     
-        <title>Blanket.Heir – blanket v1.0.0</title>
+        <title>Blanket.Metatable – blanket v1.0.0</title>
       
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc">
@@ -74,11 +74,11 @@
         <button type="button" class="btn btn-default btn-sm" data-toggle="offcanvas">
           <span class="glyphicon glyphicon-menu-hamburger"></span>
         </button>
-        blanket v1.0.0 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a> &rarr; <a href="Blanket.Heir.html#content">Heir</a>
+        blanket v1.0.0 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a> &rarr; <a href="Blanket.Metatable.html#content">Metatable</a>
       </div>
 
       <h1>
-        Blanket.Heir
+        Blanket.Metatable
         
       </h1>
 
@@ -96,8 +96,9 @@
 
       
         <section id="moduledoc" class="docstring">
-          <p>This modules describes the generic server for the table heirs. Use the
-<a href="Blanket.html"><code class="inline">Blanket</code></a> module to create and interact with a heir.</p>
+          <p>The metatable is an ETS table where heir references are associated
+to their ETS table id.</p>
+<p>This modules handles registrations and lookups into the metatable.</p>
 
         </section>
       
@@ -109,28 +110,17 @@
           <h1>Summary</h1>
           <table class="summary">
             <tr>
-  <td class="summary_signature"><a href="#attach/2">attach(pid, tab)</a></td>
+  <td class="summary_signature"><a href="#get_tab_tref/1">get_tab_tref(tab)</a></td>
   <td class="summary_synopsis"></td>
 </tr>
 <tr>
-  <td class="summary_signature"><a href="#boot/3">boot(mode, tref, opts)</a></td>
+  <td class="summary_signature"><a href="#register_table/2">register_table(tab, tref)</a></td>
   <td class="summary_synopsis"></td>
 </tr>
 <tr>
-  <td class="summary_signature"><a href="#claim/2">claim(pid, owner)</a></td>
-  <td class="summary_synopsis"></td>
-</tr>
-<tr>
-  <td class="summary_signature"><a href="#detach/2">detach(pid, tab)</a></td>
-  <td class="summary_synopsis"></td>
-</tr>
-<tr>
-  <td class="summary_signature"><a href="#pid_or_create/2">pid_or_create(tref, opts)</a></td>
-  <td class="summary_synopsis"></td>
-</tr>
-<tr>
-  <td class="summary_signature"><a href="#whereis/1">whereis(tref)</a></td>
-  <td class="summary_synopsis"></td>
+  <td class="summary_signature"><a href="#start_link/0">start_link()</a></td>
+  <td class="summary_synopsis"><p>Starts the supervisor</p>
+</td>
 </tr>
 
           </table>
@@ -143,11 +133,11 @@
         <section id="functions_details" class="details_list">
           <h1>Functions</h1>
           <section class="detail">
-  <div class="detail_header" id="attach/2">
-    <span class="signature"><strong>attach(pid, tab)</strong></span>
+  <div class="detail_header" id="get_tab_tref/1">
+    <span class="signature"><strong>get_tab_tref(tab)</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#attach/2" class="detail_link" title="Link to this function">#</a>
+      <a href="#get_tab_tref/1" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
@@ -158,11 +148,11 @@
   
 </section>
 <section class="detail">
-  <div class="detail_header" id="boot/3">
-    <span class="signature"><strong>boot(mode, tref, opts)</strong></span>
+  <div class="detail_header" id="register_table/2">
+    <span class="signature"><strong>register_table(tab, tref)</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#boot/3" class="detail_link" title="Link to this function">#</a>
+      <a href="#register_table/2" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
@@ -173,62 +163,18 @@
   
 </section>
 <section class="detail">
-  <div class="detail_header" id="claim/2">
-    <span class="signature"><strong>claim(pid, owner)</strong></span>
+  <div class="detail_header" id="start_link/0">
+    <span class="signature"><strong>start_link()</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#claim/2" class="detail_link" title="Link to this function">#</a>
+      <a href="#start_link/0" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
   
   <section class="docstring">
-    
-  </section>
-  
-</section>
-<section class="detail">
-  <div class="detail_header" id="detach/2">
-    <span class="signature"><strong>detach(pid, tab)</strong></span>
-    <div class="detail_header_links">
-      <span class="detail_type">(function)</span>
-      <a href="#detach/2" class="detail_link" title="Link to this function">#</a>
-      <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
-    </div>
-  </div>
-  
-  <section class="docstring">
-    
-  </section>
-  
-</section>
-<section class="detail">
-  <div class="detail_header" id="pid_or_create/2">
-    <span class="signature"><strong>pid_or_create(tref, opts)</strong></span>
-    <div class="detail_header_links">
-      <span class="detail_type">(function)</span>
-      <a href="#pid_or_create/2" class="detail_link" title="Link to this function">#</a>
-      <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
-    </div>
-  </div>
-  
-  <section class="docstring">
-    
-  </section>
-  
-</section>
-<section class="detail">
-  <div class="detail_header" id="whereis/1">
-    <span class="signature"><strong>whereis(tref)</strong></span>
-    <div class="detail_header_links">
-      <span class="detail_type">(function)</span>
-      <a href="#whereis/1" class="detail_link" title="Link to this function">#</a>
-      <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
-    </div>
-  </div>
-  
-  <section class="docstring">
-    
+    <p>Starts the supervisor</p>
+
   </section>
   
 </section>

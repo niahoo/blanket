@@ -29,7 +29,8 @@ defmodule Blanket.Mixfile do
   defp deps do
     [
       {:dogma, "~> 0.1", only: :dev},
-      {:ex_doc, "~> 0.8.4", only: :dev},
+      {:earmark, ">= 0.0.0", only: :dev},
+      {:ex_doc, "> 0.0.0", only: :dev},
     ]
   end
 end

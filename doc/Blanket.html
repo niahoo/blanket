@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     
-        <title>Blanket – blanket v0.3.1</title>
+        <title>Blanket – blanket v1.0.0</title>
       
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc">
@@ -13,7 +13,7 @@
   </head>
   <body>
 
-    
+    Elixir.ExDoc.Formatter.HTML
     <div class="row row-offcanvas row-offcanvas-left">
 <section id="sidebar" class="col-xs-6 col-sm-3 sidebar-offcanvas">
   <p class="pull-right visible-xs">
@@ -24,7 +24,7 @@
 
   <h1 id="full_list_header">
     
-      blanket v0.3.1
+      blanket v1.0.0
     
   </h1>
 
@@ -74,7 +74,7 @@
         <button type="button" class="btn btn-default btn-sm" data-toggle="offcanvas">
           <span class="glyphicon glyphicon-menu-hamburger"></span>
         </button>
-        blanket v0.3.1 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a>
+        blanket v1.0.0 &rarr; <a href="overview.html">Overview</a> &rarr; <a href="Blanket.html#content">Blanket</a>
       </div>
 
       <h1>
@@ -86,8 +86,6 @@
         
           <li><a href="#summary_details">Summary</a></li>
         
-        
-          <li><a href="#types_details">Types</a></li>
         
         
           <li><a href="#functions_details">Functions</a></li>
@@ -111,20 +109,19 @@ application and defines the client API.</p>
           <h1>Summary</h1>
           <table class="summary">
             <tr>
-  <td class="summary_signature"><a href="#abandon_table/2">abandon_table(tab, heir)</a></td>
-  <td class="summary_synopsis"><p>Removes the <code class="inline">:heir</code> option from the table, stops the heir process</p>
+  <td class="summary_signature"><a href="#abandon_table/1">abandon_table(tab)</a></td>
+  <td class="summary_synopsis"><p>Finds the heir associated with the table, and stops it</p>
 </td>
 </tr>
 <tr>
-  <td class="summary_signature"><a href="#new/4">new(module, owner, tab_def, opts \\ [])</a></td>
-  <td class="summary_synopsis"><p>Creates a new ETS table and a new heir attached to it</p>
+  <td class="summary_signature"><a href="#claim_table/2">claim_table(tref, opts)</a></td>
+  <td class="summary_synopsis"><p>Create an ETS table associated to a table reference, or claims the ownership
+of the table, after a restart</p>
 </td>
 </tr>
 <tr>
-  <td class="summary_signature"><a href="#receive_table/1">receive_table(timeout \\ 5000)</a></td>
-  <td class="summary_synopsis"><p>Awaits for an <code class="inline">:&#39;ETS-TRANSFER&#39;</code> message from the heir. The heir must find the
-calling process by calling <code class="inline">module.get_owner_pid(name)</code> with the <code class="inline">module</code> and
-<code class="inline">owner</code> values provided in <a href="Blanket.html#new/4"><code class="inline">Blanket.new/4</code></a></p>
+  <td class="summary_signature"><a href="#recover_heir/1">recover_heir(tab)</a></td>
+  <td class="summary_synopsis"><p>Creates a new heir for the table</p>
 </td>
 </tr>
 
@@ -133,41 +130,16 @@ calling process by calling <code class="inline">module.get_owner_pid(name)</code
       
 
       
-        <section id="types_details" class="details_list">
-          <h1>Types</h1>
-          <div class="type_detail">
-  <p class="typespec" id="t:opts/0">
-    <a href="#t:opts/0">opts</a> :: [{atom, function | boolean} | atom]
-  </p>
-  
-      <div class="typespec_doc"><p>Blanket heir options are a proplist.</p>
-</div>
-  
-</div>
-<div class="type_detail">
-  <p class="typespec" id="t:owner/0">
-    <a href="#t:owner/0">owner</a> :: atom | any
-  </p>
-  
-      <div class="typespec_doc"><p>An owner is a value used to retrieve a process. Typically it’s an atom
-manipulated with <code class="inline">Process.register</code> and <code class="inline">Process.whereis</code>. But it can be any
-value used with a custom pid-store.</p>
-</div>
-  
-</div>
-
-        </section>
-      
 
       
         <section id="functions_details" class="details_list">
           <h1>Functions</h1>
           <section class="detail">
-  <div class="detail_header" id="abandon_table/2">
-    <span class="signature"><strong>abandon_table(tab, heir)</strong></span>
+  <div class="detail_header" id="abandon_table/1">
+    <span class="signature"><strong>abandon_table(tab)</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#abandon_table/2" class="detail_link" title="Link to this function">#</a>
+      <a href="#abandon_table/1" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
@@ -175,22 +147,23 @@ value used with a custom pid-store.</p>
     <p>Specs:</p>
     <ul class="spec">
       
-        <li>abandon_table(:ets.tid, pid) :: :ok</li>
+        <li>abandon_table(:ets.tid) :: :ok | {:error, any}</li>
       
     </ul>
   
   <section class="docstring">
-    <p>Removes the <code class="inline">:heir</code> option from the table, stops the heir process.</p>
+    <p>Finds the heir associated with the table, and stops it.</p>
+<p>The calling process must own the table.</p>
 
   </section>
   
 </section>
 <section class="detail">
-  <div class="detail_header" id="new/4">
-    <span class="signature"><strong>new(module, owner, tab_def, opts \\ [])</strong></span>
+  <div class="detail_header" id="claim_table/2">
+    <span class="signature"><strong>claim_table(tref, opts)</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#new/4" class="detail_link" title="Link to this function">#</a>
+      <a href="#claim_table/2" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
@@ -198,33 +171,53 @@ value used with a custom pid-store.</p>
     <p>Specs:</p>
     <ul class="spec">
       
-        <li>new(atom, <a href="#t:owner/0">owner</a>, {atom, <a href="http://elixir-lang.org/docs/stable/elixir/Keyword.html#t:t/0">Keyword.t</a>}, <a href="#t:opts/0">opts</a>) :: {:ok, pid} | {:error, any}</li>
+        <li>claim_table(term, <a href="http://elixir-lang.org/docs/stable/elixir/Keyword.html#t:t/0">Keyword.t</a>) :: {:ok, :ets.tid} | {:ok, :ets.tid, reference} | {:error, term}</li>
       
     </ul>
   
   <section class="docstring">
-    <p>Creates a new ETS table and a new heir attached to it.</p>
-<p><code class="inline">opts</code> is either a function for populating the ets table (or any other
-operation), or a list containing zero or more options from :</p>
+    <p>Create an ETS table associated to a table reference, or claims the ownership
+of the table, after a restart.</p>
+<p>The table reference is used in Blanket and is not the ETS table id. A table
+reference can actually be any term but must be unique.</p>
+<p>This function must be called by the process that will own the table, best is
+to put it in your <code class="inline">c:GenServer.init/1</code> or <code class="inline">c:Agent.start_link/2</code> function.</p>
+<p>If your process crashes, it must be restarted with the same table reference in
+order to retrieve its ETS table. The table reference argument should be in the
+supervisor child spec or in the <code class="inline">Supervisor.start_child/2</code> for instance.</p>
+<h3>Available Options</h3>
+<p><strong><code class="inline">:create_table</code></strong>, <strong>required</strong>. Determines how to create the ETS table
+  the first time the heir is created. One of the following :</p>
 <ul>
-<li><code class="inline">:transient</code> (<code class="inline">true</code> | <code class="inline">false</code>) : wether the heir will stop if the table
-   process exits with <code class="inline">:normal</code>.
+<li>A <code class="inline">fn</code> returning <code class="inline">{:ok, tab}</code> where <code class="inline">tab</code> is the identifier of the
+   created ETS table.
 </li>
-<li><code class="inline">:populate</code> : the same function as above.
+<li>A tuple <code class="inline">{table_name, table_opts}</code> which will be used to call
+   <code class="inline">:ets.new(table_name, table_opts)</code>.
+</li>
+<li>A module name, e.g. <code class="inline">MyTableServer</code> or <code class="inline">__MODULE__</code>. The module must
+  export a <code class="inline">create_table/1</code> function which will be passed the whole
+  <code class="inline">claim_table</code> options list and must return <code class="inline">{:ok, tab}</code> where <code class="inline">tab</code> is
+  the identifier of the created ETS table.
 </li>
 </ul>
-<p>The table is created in the current process, as is called the populate
-function.</p>
+<p>Any <code class="inline">{:heir, _, _}</code> set on the table will be overriden by the Blanket heir.</p>
+<p><strong><code class="inline">:monitor</code></strong>, optional, defaults to false. If true, the calling process will
+set a monitor the heir process and receive a <code class="inline">:&#39;DOWN&#39;</code> message if the latter
+crashes. Mostly useless because heir have an extremely rare chance to crash,
+as they do basically nothing.</p>
+<p><strong><code class="inline">:monitor_ref</code></strong>, optional, defaults to false. If true, the return of
+<a href="#claim_table/2"><code class="inline">claim_table/2</code></a> also includ a monitor reference as the third element.</p>
 
   </section>
   
 </section>
 <section class="detail">
-  <div class="detail_header" id="receive_table/1">
-    <span class="signature"><strong>receive_table(timeout \\ 5000)</strong></span>
+  <div class="detail_header" id="recover_heir/1">
+    <span class="signature"><strong>recover_heir(tab)</strong></span>
     <div class="detail_header_links">
       <span class="detail_type">(function)</span>
-      <a href="#receive_table/1" class="detail_link" title="Link to this function">#</a>
+      <a href="#recover_heir/1" class="detail_link" title="Link to this function">#</a>
       <a class="to_top_link" href="#content" title="To the top of the page">&uarr;</a>
     </div>
   </div>
@@ -232,14 +225,16 @@ function.</p>
     <p>Specs:</p>
     <ul class="spec">
       
-        <li>receive_table(timeout) :: {:ok, :ets.tid} | {:error, :transfer_timeout}</li>
+        <li>recover_heir(:ets.tid) :: {:ok, reference} | {:error, any}</li>
       
     </ul>
   
   <section class="docstring">
-    <p>Awaits for an <code class="inline">:&#39;ETS-TRANSFER&#39;</code> message from the heir. The heir must find the
-calling process by calling <code class="inline">module.get_owner_pid(name)</code> with the <code class="inline">module</code> and
-<code class="inline">owner</code> values provided in <a href="Blanket.html#new/4"><code class="inline">Blanket.new/4</code></a>.</p>
+    <p>Creates a new heir for the table.</p>
+<p>The calling process must be the table owner. Sets a monitor and return the new
+process monitor ref.</p>
+<p>This function should not be called if the heir is not dead because the current
+heir will not be turned down while booting a new one.</p>
 
   </section>
   
