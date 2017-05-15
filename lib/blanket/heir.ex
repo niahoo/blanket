@@ -7,7 +7,8 @@ defmodule Blanket.Heir do
 
   use GenServer
   defmodule State do
-    defstruct [tab: nil, owner_pid: nil, mref: nil]
+    @moduledoc false
+    defstruct [tab: nil, owner: nil, mref: nil]
   end
 
   defp via(tref) do
@@ -30,21 +31,22 @@ defmodule Blanket.Heir do
     end
   end
 
-  def boot(create_or_recover, tref, opts) do
-    Supervisor.start_child(Blanket.Heir.Supervisor, [create_or_recover, tref, opts])
+  def boot(mode, tref, opts) do
+    Supervisor.start_child(Blanket.Heir.Supervisor, [mode, tref, opts])
   end
 
   @doc false
   # The :via option is just used so we cannot create two processes with the same
   # tref. But we use the pid to send messages to the gen_server.
-  def start_link(create_or_recover, tref, opts) do
-    GenServer.start_link(__MODULE__, [create_or_recover, tref, opts], name: via(tref))
+  def start_link(mode, tref, opts) do
+    GenServer.start_link(__MODULE__, [mode, tref, opts], name: via(tref))
   end
 
-  def claim(pid, owner_pid) when is_pid(pid) do
-    GenServer.call(pid, {:claim, owner_pid})
+  def claim(pid, owner) when is_pid(pid) do
+    pid
+    |> GenServer.call({:claim, owner})
     |> case do
-      err={:error, _} -> err
+      err = {:error, _} -> err
       {:ok, tab} ->
         receive do
           {:'ETS-TRANSFER', ^tab, ^pid, :blanket_giveaway} -> :ok
@@ -77,7 +79,7 @@ defmodule Blanket.Heir do
     :ok
   end
 
-  def heir_opt(pid) when is_pid(pid) do
+  defp heir_opt(pid) when is_pid(pid) do
     {:heir, pid, :blanket_heir}
   end
 
@@ -92,7 +94,7 @@ defmodule Blanket.Heir do
     end
   end
 
-  def init([:recover, tref, :no_opts]) do
+  def init([:recover, _tref, :no_opts]) do
     {:ok, %State{}}
   end
 
@@ -101,48 +103,49 @@ defmodule Blanket.Heir do
   end
 
 
-  def handle_call({:claim, new_owner_pid}, _from,
-    state = %State{owner_pid: owner_pid})
-    when is_pid(owner_pid) do
+  def handle_call({:claim, _new_owner}, _from,
+    state = %State{owner: owner})
+    when is_pid(owner) do
     {:reply, {:error, :already_owned}, state}
   end
 
-  def handle_call({:claim, owner_pid}, _from, state = %State{owner_pid: nil, tab: tab})
-    when is_pid(owner_pid) do
+  def handle_call({:claim, owner}, _from, state = %State{owner: nil, tab: tab})
+    when is_pid(owner) do
     if ETS.info(tab, :owner) === self() do
-      mref = Process.monitor(owner_pid)
-      ETS.give_away(tab, owner_pid, :blanket_giveaway)
-      {:reply, {:ok, tab}, %State{state | mref: mref, owner_pid: owner_pid}}
+      mref = Process.monitor(owner)
+      ETS.give_away(tab, owner, :blanket_giveaway)
+      {:reply, {:ok, tab}, %State{state | mref: mref, owner: owner}}
     else
       {:reply, {:error, :cannot_giveaway}, state}
     end
   end
 
-  def handle_call({:attach, tab, owner_pid}, _from, state = %State{owner_pid: nil, tab: nil}) do
-    mref = Process.monitor(owner_pid)
-    {:reply, :ok, %State{state | mref: mref, owner_pid: owner_pid, tab: tab}}
+  def handle_call({:attach, tab, owner}, _from,
+    state = %State{owner: nil, tab: nil}) do
+    mref = Process.monitor(owner)
+    {:reply, :ok, %State{state | mref: mref, owner: owner, tab: tab}}
   end
 
   def handle_call({:stop, :detach}, _from, state) do
     {:stop, :normal, :ok, state}
   end
 
-  def handle_info({:DOWN, mref, :process, owner_pid, _reason},
-      state = %State{owner_pid: owner_pid, tab: tab, mref: mref}) do
+  def handle_info({:DOWN, mref, :process, owner, _reason},
+      state = %State{owner: owner, tab: tab, mref: mref}) do
     # We receive the 'DOWN' message first, so we wait for the ETS-TRANSFER
     receive do
-      {:'ETS-TRANSFER', ^tab, ^owner_pid, :blanket_heir} ->
+      {:'ETS-TRANSFER', ^tab, ^owner, :blanket_heir} ->
         {:noreply, reset_owner(state)}
     after
       5000 -> raise "Transfer not received"
     end
   end
 
-  def handle_info({:'ETS-TRANSFER', tab, owner_pid, :blanket_heir},
-      state = %State{owner_pid: owner_pid, tab: tab, mref: mref}) do
+  def handle_info({:'ETS-TRANSFER', tab, owner, :blanket_heir},
+      state = %State{owner: owner, tab: tab, mref: mref}) do
     # We receive the 'ETS-TRANSFER' message first, so we wait for the DOWN
     receive do
-      {:DOWN, ^mref, :process, ^owner_pid, _reason} ->
+      {:DOWN, ^mref, :process, ^owner, _reason} ->
         {:noreply, reset_owner(state)}
     after
       5000 -> raise "Down message not received"
@@ -154,12 +157,11 @@ defmodule Blanket.Heir do
   end
 
   defp reset_owner(state),
-    do: %State{state | owner_pid: nil, mref: nil}
+    do: %State{state | owner: nil, mref: nil}
 
 
   defp create_table(tref, opts) do
     # We are creating a new heir, we must also create the table
-    heir = heir_opt(self())
     create_table =
       case Keyword.get(opts, :create_table) do
         # If the user supplied a module, give back the opts, plus the heir opt
@@ -167,8 +169,8 @@ defmodule Blanket.Heir do
           fn() -> apply(module, :create_table, [opts]) end
         # If the user supplied options, create a table with those options and
         # the heir option.
-        {table_name, table_opts} when is_atom(table_name) and is_list(table_opts) ->
-          fn() -> {:ok, ETS.new(table_name, table_opts)} end
+        {tname, table_opts} when is_atom(tname) and is_list(table_opts) ->
+          fn() -> {:ok, ETS.new(tname, table_opts)} end
         fun when is_function(fun, 0) ->
           fun
         _other ->

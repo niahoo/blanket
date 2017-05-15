@@ -1,5 +1,10 @@
-
 defmodule Blanket.Metatable do
+  @moduledoc """
+  The metatable is an ETS table where Blanket table references are associated
+  to the table id of the ETS tables having a Blanket heir.
+
+  This modules handles registrations and lookups into the metatable.
+  """
   use GenServer
 
   @metatable __MODULE__

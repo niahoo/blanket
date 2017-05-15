@@ -19,12 +19,13 @@ defmodule BlanketTest do
     # We will ask blanket for a table. The table will be created
     assert {:ok, tab} = Blanket.claim_table(:some_ref, create_table: __MODULE__)
     # You can't claim the table multiple times (even with the owner process)
-    assert {:error, :already_owned} = Blanket.claim_table(:some_ref, create_table: __MODULE__)
+    assert {:error, :already_owned} =
+      Blanket.claim_table(:some_ref, create_table: __MODULE__)
     Process.sleep(300)
     assert :ok = Blanket.abandon_table(tab)
   end
 
-  def create_table(opts) do
+  def create_table(_opts) do
     {:ok, :ets.new(:test_table_name, [])}
   end
 
@@ -56,9 +57,7 @@ defmodule BlanketTest do
     TestTableServer.kill!(owner)
     :timer.sleep(300)
 
-    IO.puts "KILLING HEIR"
     [{heir_pid, _}] = Registry.lookup(Blanket.Registry, :my_test_table)
-    IO.puts " ---- heir pid : #{inspect heir_pid}"
     Process.exit(heir_pid, :kill)
 
     # Let the owner get the DOWN message
@@ -78,7 +77,8 @@ defmodule BlanketTest do
   test "An owner can abandon the table" do
     tref = make_ref()
     # create a public table
-    assert {:ok, owner} = create_owner(tref, :public_test_table, [:named_table, :public])
+    assert {:ok, owner} =
+      create_owner(tref, :public_test_table, [:named_table, :public])
     # it should have a heir
     assert [{heir, _}] = Registry.lookup(Blanket.Registry, tref)
     assert Process.alive?(heir) # dummy test, it should fail later
@@ -96,9 +96,9 @@ defmodule BlanketTest do
   end
 end
 
-## -- END OF TESTS
+# -- END OF TESTS
 
-## -- TEST COMPONENTS :
+# -- TEST COMPONENTS :
 
 
 defmodule TestTableSup do
@@ -137,22 +137,20 @@ defmodule TestTableServer do
   end
 
   def kill!(pid) do
-    IO.puts "/!\\ Kill process #{inspect pid}"
     Process.exit(pid, :kill)
   end
   def stop!(pid), do: GenServer.call(pid, :stop)
 
   def increment(pid), do: GenServer.call(pid, :increment)
 
-  def tget(pid, k), do: GenServer.call(pid, {:tget, k})
-  def tset(pid, k, v), do: GenServer.call(pid, {:tset, k, v})
-
   # --------------
 
-  def init(_args=[tref, opts]) do
-    claim = Blanket.claim_table(tref, opts ++ [monitor: true, monitor_ref: true])
+  def init([tref, opts]) do
+    opts = opts
+    |> Keyword.put(:monitor, true)
+    |> Keyword.put(:monitor_ref, true)
+    claim = Blanket.claim_table(tref, opts)
     Process.register(self(), Keyword.fetch!(opts, :register))
-    IO.puts "TestTableServer #{inspect self()} claiming table #{inspect tref} : #{inspect claim}"
     {:ok, tab, _monitor_ref} = claim
     {:ok, %State{tab: tab}}
   end
@@ -162,31 +160,16 @@ defmodule TestTableServer do
     {:reply, new_value, %State{tab: tab}}
   end
 
-  def handle_call({:tget, k}, _from, %State{tab: tab}) do
-    value = case :ets.lookup(tab, k) do
-      [] -> nil
-      [{^k, v}] -> v
-    end
-    {:reply, value, %State{tab: tab}}
-  end
-
-  def handle_call({:tset, k, v}, _from, %State{tab: tab}) do
-    true = :ets.insert(tab, {k, v})
-    {:reply, :ok, %State{tab: tab}}
-  end
-
   def handle_call(:stop, _from, %State{tab: tab}) do
     {:stop, :normal, :ok, %State{tab: tab}}
   end
 
-  def handle_info({:DOWN, _ref, :process, _pid, _reason}, %State{tab: tab, tref: tref}) do
-    IO.puts "The heir died"
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, %State{tab: tab}) do
     {:ok, _monitor_ref} = Blanket.recover_heir(tab)
     {:noreply, %State{tab: tab}}
   end
 
   def handle_info(_info, %State{tab: tab}) do
-    IO.puts "~~~~~~ #{__MODULE__} received unhandled info #{inspect _info}"
     {:noreply, %State{tab: tab}}
   end
 
