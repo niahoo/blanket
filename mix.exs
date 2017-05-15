@@ -9,7 +9,7 @@ defmodule Blanket.Mixfile do
      start_permanent: Mix.env == :prod,
      description: "Don't loose your ETS tables with Elixir.",
      package: [
-       contributors: ["Ludovic Demblans"],
+       maintainers: ["Ludovic Demblans"],
        licenses: ["MIT"],
        links: %{
          "GitHub" => "https://github.com/niahoo/blanket",
